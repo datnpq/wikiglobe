@@ -50,7 +50,7 @@ Mục tiêu: lấp **gap zoom trung gian** (z6–10 hiện chỉ có đô thị)
 ## ✨ Phase 3 — Gắn kết & phân phối
 Mục tiêu: giữ chân người dùng và lan toả.
 
-- [ ] ⭐ **"Khám phá ngẫu nhiên"** ⏱️S — nút bay tới một nơi nổi bật bất kỳ.
+- [x] ⭐ **"✨ Khám phá ngẫu nhiên"** ⏱️S — bay cinematic tới một địa danh nổi bật bất kỳ (bias theo notability) & mở bài luôn. *(xong)*
 - [ ] ⭐ **Địa điểm nổi bật trong ngày** ⏱️M — featured location, tạo lý do quay lại.
 - [ ] 💤 **Tour có chủ đề** ⏱️L — chuỗi điểm dẫn dắt (Con đường tơ lụa, kỳ quan cổ đại…).
 - [ ] 💤 **Embed widget / iframe** ⏱️M — nhúng globe vào blog/báo.

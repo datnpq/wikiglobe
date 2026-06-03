@@ -83,10 +83,10 @@
   #results .row.msg{color:var(--muted);cursor:default}
 
   /* time-mode toggle (top bar) */
-  #timetoggle,#satbtn{all:unset;pointer-events:auto;cursor:pointer;font-size:12.5px;font-weight:600;
-    color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:999px;
-    padding:7px 13px;backdrop-filter:blur(10px);transition:.15s;white-space:nowrap}
-  #timetoggle.on,#satbtn.on{color:#fff;
+  #timetoggle,#satbtn,#surprise{all:unset;pointer-events:auto;cursor:pointer;font-size:12.5px;
+    font-weight:600;color:var(--muted);background:var(--panel);border:1px solid var(--line);
+    border-radius:999px;padding:7px 13px;backdrop-filter:blur(10px);transition:.15s;white-space:nowrap}
+  #timetoggle.on,#satbtn.on,#surprise:hover{color:#fff;
     background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent}
 
   /* onboarding: pick a country */
@@ -209,6 +209,7 @@
     <div id="results"></div>
   </div>
   <div class="spacer"></div>
+  <button id="surprise" title="Bay tới một địa danh bất ngờ">✨ Khám phá</button>
   <button id="satbtn">🛰 Vệ tinh</button>
   <button id="timetoggle">🕰 Dòng thời gian</button>
   <div id="count">Đang chờ…</div>
@@ -781,6 +782,21 @@ satbtn.onclick=()=>{
   map.setLayoutProperty('satellite','visibility',satOn?'visible':'none');
   map.setLayoutProperty('carto','visibility',satOn?'none':'visible');
 };
+
+/* ---------- "✨ Khám phá": cinematic jump to a random notable place ---------- */
+const surpriseBtn=document.getElementById('surprise');
+function surprise(){
+  const pool=[];
+  for(const c of PLACES) if(c[3][LANG]) pool.push(c);
+  if(!pool.length) return;
+  // PLACES is sorted by notability; bias toward the famous but keep serendipity.
+  const c=pool[Math.floor(Math.pow(Math.random(),1.7)*pool.length)];
+  if(timeMode) setTimeMode(false);
+  exitOrbit();
+  openArticle({title:c[3][LANG]});
+  cinematic([c[0],c[1]], 12, 45);
+}
+surpriseBtn.onclick=surprise;
 
 /* ---------- onboarding: pick a country → cinematic fly-in + orbit ---------- */
 const COUNTRIES=[
