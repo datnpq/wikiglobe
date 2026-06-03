@@ -272,6 +272,65 @@ const MAX_CELLS = 28;            // above this the viewport is too big → globa
 
 /* ---------- shareable URL state: #zoom/lat/lng/lang ---------- */
 const LANGS = ['vi','en','fr','ja'];
+
+/* ---------- UI translations (chrome follows the chosen language) ---------- */
+const HINT=(g,c,rest)=>`Chấm <b style="color:#ffd479">${g}</b> · <b style="color:#cc785c">${c}</b> · ${rest}`;
+const I18N={
+  vi:{tagline:'tri thức theo địa lý',search:'Tìm địa điểm…',explore:'✨ Khám phá',sat:'🛰 Vệ tinh',
+    timeline:'🕰 Dòng thời gian',vnonly:'chỉ VN',
+    hint:HINT('vàng = đô thị','cam = danh thắng','xoay & <b>zoom vào</b> để xem mọi bài'),
+    onboardH:'Bắt đầu hành trình từ <span class="g">đâu?</span>',
+    onboardP:'Chọn một quốc gia — quả địa cầu sẽ bay tới và xoay quanh nơi đó. Hoặc khám phá tự do.',
+    skip:'Khám phá tự do →',read:'Đọc toàn bộ trên Wikipedia →',loading:'Đang tải…',
+    loadingMap:'Đang tải bản đồ tri thức…',places:'{n} địa điểm nổi bật · zoom vào để xem mọi bài',
+    inview:'{n} bài trong khung nhìn',noart:'Không có bài ở vùng này',neterr:'Lỗi mạng',
+    timecount:'Dòng thời gian · {n} mốc lịch sử',events:'{n} sự kiện',eventsVN:'{n} sự kiện ở VN',
+    vihist:'Dòng sử Việt',wikiart:'Bài viết Wikipedia',nosum:'(Không có tóm tắt)',
+    loaderr:'Không tải được nội dung.',searching:'Đang tìm…',noplace:'Không tìm thấy địa điểm',
+    searcherr:'Lỗi tìm kiếm',bce:'TCN'},
+  en:{tagline:'knowledge by geography',search:'Search a place…',explore:'✨ Discover',sat:'🛰 Satellite',
+    timeline:'🕰 Timeline',vnonly:'VN only',
+    hint:HINT('gold = city','coral = landmark','spin & <b>zoom in</b> to see every article'),
+    onboardH:'Where does your journey <span class="g">begin?</span>',
+    onboardP:'Pick a country — the globe flies there and orbits it. Or explore freely.',
+    skip:'Explore freely →',read:'Read the full article on Wikipedia →',loading:'Loading…',
+    loadingMap:'Loading the knowledge map…',places:'{n} notable places · zoom in to see every article',
+    inview:'{n} articles in view',noart:'No articles in this area',neterr:'Network error',
+    timecount:'Timeline · {n} historical markers',events:'{n} events',eventsVN:'{n} events in Vietnam',
+    vihist:'Vietnamese history',wikiart:'Wikipedia article',nosum:'(No summary)',
+    loaderr:'Could not load content.',searching:'Searching…',noplace:'No place found',
+    searcherr:'Search error',bce:'BCE'},
+  fr:{tagline:'le savoir par la géographie',search:'Rechercher un lieu…',explore:'✨ Explorer',
+    sat:'🛰 Satellite',timeline:'🕰 Chronologie',vnonly:'Viêt Nam',
+    hint:HINT('or = ville','corail = site','tournez & <b>zoomez</b> pour voir tous les articles'),
+    onboardH:'Où commence votre <span class="g">voyage ?</span>',
+    onboardP:'Choisissez un pays — le globe s’y rend et tourne autour. Ou explorez librement.',
+    skip:'Explorer librement →',read:'Lire l’article complet sur Wikipédia →',loading:'Chargement…',
+    loadingMap:'Chargement de la carte du savoir…',places:'{n} lieux notables · zoomez pour tout voir',
+    inview:'{n} articles dans la vue',noart:'Aucun article dans cette zone',neterr:'Erreur réseau',
+    timecount:'Chronologie · {n} repères historiques',events:'{n} événements',
+    eventsVN:'{n} événements au Vietnam',vihist:'Histoire du Vietnam',wikiart:'Article Wikipédia',
+    nosum:'(Pas de résumé)',loaderr:'Impossible de charger le contenu.',searching:'Recherche…',
+    noplace:'Aucun lieu trouvé',searcherr:'Erreur de recherche',bce:'av. J.-C.'},
+  ja:{tagline:'地理でめぐる知識',search:'場所を検索…',explore:'✨ 発見',sat:'🛰 衛星',
+    timeline:'🕰 年表',vnonly:'ベトナム',
+    hint:HINT('金 = 都市','橙 = 名所','回して<b>ズーム</b>すると記事が見えます'),
+    onboardH:'旅の出発点は<span class="g">どこ？</span>',
+    onboardP:'国を選ぶと地球がそこへ飛び、周回します。自由に探索もできます。',
+    skip:'自由に探索 →',read:'Wikipediaで全文を読む →',loading:'読み込み中…',
+    loadingMap:'知識の地図を読み込み中…',places:'注目の場所 {n} 件 · ズームで全記事',
+    inview:'表示範囲に {n} 件',noart:'この地域に記事はありません',neterr:'ネットワークエラー',
+    timecount:'年表 · 歴史の節目 {n} 件',events:'{n} 件の出来事',eventsVN:'ベトナムの出来事 {n} 件',
+    vihist:'ベトナムの歴史',wikiart:'Wikipedia の記事',nosum:'(要約なし)',
+    loaderr:'コンテンツを読み込めませんでした。',searching:'検索中…',noplace:'場所が見つかりません',
+    searcherr:'検索エラー',bce:'紀元前'},
+};
+const t =(k)=> (I18N[LANG]||I18N.vi)[k];
+const tf=(k,n)=> t(k).replace('{n}', n.toLocaleString(LANG==='vi'?'vi-VN':LANG));
+function regionName(cc){
+  try{ return new Intl.DisplayNames([LANG],{type:'region'}).of(cc.toUpperCase()); }
+  catch{ return cc.toUpperCase(); }
+}
 function readHash(){
   const p = location.hash.slice(1).split('/');
   const z=+p[0], lat=+p[1], lng=+p[2];
@@ -424,7 +483,7 @@ map.on('load',()=>{
 
   map.on('moveend',()=>{ updateTiers(); writeHash(); });
   map.on('idle',tickIdle);    // idle-only motion: free spin, or orbit a chosen country
-  syncLangPill(); updateTiers();
+  syncLangPill(); applyI18n(); updateTiers();
   if(START && START.time!=null){ yearSlider.value=START.time; setTimeMode(true); }
   else writeHash();
   initOnboard();
@@ -440,6 +499,27 @@ function writeHash(){
 function syncLangPill(){
   document.querySelectorAll('#lang button').forEach(b=>
     b.classList.toggle('on', b.dataset.lang===LANG));
+}
+function renderCountries(){
+  const el=document.getElementById('countries'); if(!el) return;
+  el.innerHTML=COUNTRIES.map((c,i)=>
+    `<button data-i="${i}"><img class="flag" src="https://flagcdn.com/${c.cc}.svg" `+
+    `alt="" loading="lazy" width="24" height="16">${regionName(c.cc)}</button>`).join('');
+}
+function applyI18n(){
+  document.querySelector('#brand small').textContent=t('tagline');
+  qInput.placeholder=t('search');
+  document.getElementById('surprise').textContent=t('explore');
+  satbtn.textContent=t('sat');
+  timetoggle.textContent=t('timeline');
+  document.getElementById('vntoggle').innerHTML=
+    '<img class="vnflag" src="https://flagcdn.com/vn.svg" alt="VN">'+t('vnonly');
+  document.getElementById('hint').innerHTML='🌍 '+t('hint');
+  document.querySelector('#onboard h2').innerHTML=t('onboardH');
+  document.querySelector('#onboard p').textContent=t('onboardP');
+  document.getElementById('skip').textContent=t('skip');
+  document.getElementById('p-link').textContent=t('read');
+  renderCountries();
 }
 
 /* ---------- tier orchestration: global cities vs live geosearch ---------- */
@@ -482,9 +562,7 @@ function updateTiers(){
   if(global){
     map.getSource('wiki').setData(EMPTY);
     hint.style.opacity=1;
-    count.textContent = lastGlobalCount
-      ? `${lastGlobalCount.toLocaleString('vi-VN')} địa điểm nổi bật · zoom vào để xem mọi bài`
-      : 'Đang tải bản đồ tri thức…';
+    count.textContent = lastGlobalCount ? tf('places',lastGlobalCount) : t('loadingMap');
   } else {
     hint.style.opacity=0;
     loadArticles();
@@ -535,7 +613,7 @@ async function loadArticles(){
   if(cols*rows>MAX_CELLS) return;        // updateTiers should have kept us global
 
   const my=++reqId;
-  document.getElementById('count').textContent='Đang tải…';
+  document.getElementById('count').textContent=t('loading');
   const cells=[];
   for(let i=0;i<cols;i++) for(let j=0;j<rows;j++){
     const cw=w+i*CELL, ce=Math.min(cw+CELL,e);
@@ -557,8 +635,8 @@ async function loadArticles(){
     }
     map.getSource('wiki').setData({type:'FeatureCollection',features});
     document.getElementById('count').textContent=
-      features.length? `${features.length} bài trong khung nhìn` : 'Không có bài ở vùng này';
-  }catch(err){ if(my===reqId) document.getElementById('count').textContent='Lỗi mạng'; }
+      features.length? tf('inview',features.length) : t('noart');
+  }catch(err){ if(my===reqId) document.getElementById('count').textContent=t('neterr'); }
 }
 
 /* ---------- article panel via REST summary ---------- */
@@ -567,7 +645,7 @@ async function openArticle(props){
   panel.classList.add('open');
   document.body.classList.add('panelopen');
   document.getElementById('p-title').textContent=props.title;
-  document.getElementById('p-meta').textContent='Đang tải…';
+  document.getElementById('p-meta').textContent=t('loading');
   document.getElementById('p-extract').textContent='';
   document.getElementById('hero').style.backgroundImage='none';
   try{
@@ -576,14 +654,14 @@ async function openArticle(props){
     const j=await r.json();
     document.getElementById('p-title').textContent=j.title||props.title;
     document.getElementById('p-meta').textContent=
-      (j.description||'Bài viết Wikipedia')+' · '+LANG.toUpperCase();
-    document.getElementById('p-extract').textContent=j.extract||'(Không có tóm tắt)';
+      (j.description||t('wikiart'))+' · '+LANG.toUpperCase();
+    document.getElementById('p-extract').textContent=j.extract||t('nosum');
     document.getElementById('p-link').href=
       (j.content_urls&&j.content_urls.desktop.page)||
       `https://${LANG}.wikipedia.org/?curid=${props.pageid}`;
     const img=j.thumbnail&&j.thumbnail.source;
     document.getElementById('hero').style.backgroundImage=img?`url(${img})`:'none';
-  }catch(e){ document.getElementById('p-meta').textContent='Không tải được nội dung.'; }
+  }catch(e){ document.getElementById('p-meta').textContent=t('loaderr'); }
 }
 document.getElementById('close').onclick=()=>{
   panel.classList.remove('open'); document.body.classList.remove('panelopen');
@@ -622,7 +700,7 @@ document.getElementById('lang').addEventListener('click',e=>{
   const btn=e.target.closest('button'); if(!btn) return;
   LANG=btn.dataset.lang;
   [...e.currentTarget.children].forEach(b=>b.classList.toggle('on',b===btn));
-  refreshGlobalTier(); updateTiers(); if(timeMode) refreshEvents(); writeHash();
+  applyI18n(); refreshGlobalTier(); updateTiers(); if(timeMode) refreshEvents(); writeHash();
 });
 
 /* ---------- time slider: dated history through the ages ---------- */
@@ -669,11 +747,14 @@ function buildEraBand(){
 function updateEra(y){
   const cur=VN_ERAS.find(e=>y>=e.s && y<=e.e);
   eraname.innerHTML='<img class="vnflag" src="https://flagcdn.com/vn.svg" alt="VN"> '+
-    (cur ? cur.n : 'Dòng sử Việt');
+    (cur ? cur.n : t('vihist'));
   [...erband.children].forEach((el,i)=>el.classList.toggle('cur',VN_ERAS[i]===cur));
 }
 
-function fmtYear(y){ return y<0 ? (-y)+' TCN' : ''+y; }
+function fmtYear(y){
+  if(y>=0) return ''+y;
+  const n=-y; return LANG==='ja' ? t('bce')+n : n+' '+t('bce');
+}
 
 let vnOnly=false;
 const inVN=(lon,lat)=> lon>=102 && lon<=110 && lat>=8 && lat<=24;   // Vietnam bbox
@@ -689,7 +770,7 @@ function refreshEvents(){
   }
   map.getSource('events').setData({type:'FeatureCollection',features:feats});
   yearLabel.textContent=fmtYear(year);
-  ecount.textContent=feats.length+(vnOnly?' sự kiện ở VN':' sự kiện');
+  ecount.textContent=vnOnly?tf('eventsVN',feats.length):tf('events',feats.length);
   updateEra(year);
   writeHash();
 }
@@ -713,7 +794,7 @@ function setTimeMode(on){
     setVis(['cities-clusters','cities-cluster-count','cities-glow','cities-point',
             'clusters','cluster-count','point-glow','point'],false);
     document.getElementById('hint').style.opacity=0;
-    document.getElementById('count').textContent='Dòng thời gian · '+EVENTS.length+' mốc lịch sử';
+    document.getElementById('count').textContent=tf('timecount',EVENTS.length);
     buildEraBand(); refreshEvents();
   }else{
     stopPlay();
@@ -752,7 +833,7 @@ function renderResults(){
 
 async function runSearch(query){
   const my=++searchSeq;
-  renderMsg('Đang tìm…');
+  renderMsg(t('searching'));
   try{
     const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6'+
       `&accept-language=${LANG}&q=${encodeURIComponent(query)}`;
@@ -760,9 +841,9 @@ async function runSearch(query){
     const j=await r.json();
     if(my!==searchSeq) return;            // superseded by a newer keystroke
     hits=j; selIdx=-1;
-    if(!hits.length){ renderMsg('Không tìm thấy địa điểm'); return; }
+    if(!hits.length){ renderMsg(t('noplace')); return; }
     renderResults();
-  }catch(e){ if(my===searchSeq) renderMsg('Lỗi tìm kiếm'); }
+  }catch(e){ if(my===searchSeq) renderMsg(t('searcherr')); }
 }
 
 function gotoHit(h){
@@ -855,9 +936,7 @@ function flyToCountry(ct){
   cinematic(ct.center, ct.z, 45, ()=>{ if(!userInteracting) orbitOn=true; });
 }
 function initOnboard(){
-  document.getElementById('countries').innerHTML=COUNTRIES.map((c,i)=>
-    `<button data-i="${i}"><img class="flag" src="https://flagcdn.com/${c.cc}.svg" `+
-    `alt="" loading="lazy" width="24" height="16">${c.n}</button>`).join('');
+  renderCountries();
   document.getElementById('countries').addEventListener('click',e=>{
     const b=e.target.closest('button[data-i]'); if(!b) return;
     flyToCountry(COUNTRIES[+b.dataset.i]);

@@ -30,7 +30,7 @@ Mục tiêu: từ "demo đẹp" → "công cụ dùng được mỗi ngày".
 - [x] ⭐ **Cờ thật (SVG)** ⏱️S — flag emoji → ảnh flagcdn, đẹp trên mọi OS. *(xong)*
 - [x] ⭐ **Hover preview** ⏱️S — rê chuột vào chấm → tooltip tên + ảnh (prefetch summary, có cache). *(xong)*
 - [x] ⭐ **Sửa panel che nút ngôn ngữ** ⏱️S — panel mở → dịch controls top-bar sang trái (desktop). *(xong)*
-- [ ] ⭐ **i18n UI chrome** ⏱️M — hiện chữ giao diện chỉ tiếng Việt; tách chuỗi theo `LANG`.
+- [x] ⭐ **i18n UI chrome** ⏱️M — toàn bộ chữ giao diện dịch theo `LANG` (vi/en/fr/ja); tên quốc gia tự localize qua `Intl.DisplayNames`; định dạng năm TCN/BCE/av.J.-C./紀元前. *(xong)*
 - [ ] 💤 **Loading skeleton + retry mạng** ⏱️S — trạng thái tải mượt, nút thử lại khi lỗi.
 
 ---
@@ -42,6 +42,7 @@ Mục tiêu: lấp **gap zoom trung gian** (z6–10 hiện chỉ có đô thị)
 - [ ] 💤 **Nâng lên Supabase/D1** ⏱️L — nếu cần full coverage (mọi bài, không chỉ nổi bật) + lazy-load theo tile, không phụ thuộc `gsbbox`.
 - [ ] ⭐ **Heatmap mật độ** ⏱️M — vùng dày tri thức sáng rực = "bản đồ văn minh".
 - [ ] ⭐ **Mở rộng tầng toàn cầu** ⏱️M — không chỉ đô thị: di sản UNESCO, núi, danh thắng, sân bay… (thêm `P31` vào `build-cities.mjs`).
+- [x] ⭐ **Đào sâu Việt Nam** ⏱️M — `vn-events.js` (22 sự kiện sử Việt verified) + toggle "🇻🇳 chỉ VN" lọc sự kiện theo vùng & khung VN. *(xong)*
 - [ ] ⭐ **Bộ lọc theo loại** ⏱️M — người / sự kiện / địa danh / thiên nhiên; đổi màu & toggle.
 - [ ] 💤 **Auto-rebuild `cities.js`** ⏱️S — GitHub Action cron hàng tháng chạy `build-cities.mjs` + commit.
 
