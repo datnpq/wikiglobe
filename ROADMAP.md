@@ -38,7 +38,8 @@ Mục tiêu: từ "demo đẹp" → "công cụ dùng được mỗi ngày".
 ## 📊 Phase 2 — Chiều sâu dữ liệu (khác biệt cạnh tranh)
 Mục tiêu: lấp **gap zoom trung gian** (z6–10 hiện chỉ có đô thị) và làm "bản đồ văn minh" thật sự dày.
 
-- [ ] 🔥 **Geo-index cache → Supabase/D1** ⏱️L — index sẵn bài geotagged toàn cầu → tri thức dày ở mọi mức zoom, không phụ thuộc giới hạn `gsbbox`. *Bước nâng tầm lớn nhất.*
+- [x] 🔥 **Geo-index tĩnh (zero-backend)** ⏱️L — `places.js`: 35k địa danh nổi bật (di sản, danh thắng, núi/hồ, công trình…) lọc theo `wikibase:sitelinks`, trộn vào tầng toàn cầu → **lấp dày z6–10**. Thành phố vàng, danh thắng coral. *(xong)*
+- [ ] 💤 **Nâng lên Supabase/D1** ⏱️L — nếu cần full coverage (mọi bài, không chỉ nổi bật) + lazy-load theo tile, không phụ thuộc `gsbbox`.
 - [ ] ⭐ **Heatmap mật độ** ⏱️M — vùng dày tri thức sáng rực = "bản đồ văn minh".
 - [ ] ⭐ **Mở rộng tầng toàn cầu** ⏱️M — không chỉ đô thị: di sản UNESCO, núi, danh thắng, sân bay… (thêm `P31` vào `build-cities.mjs`).
 - [ ] ⭐ **Bộ lọc theo loại** ⏱️M — người / sự kiện / địa danh / thiên nhiên; đổi màu & toggle.

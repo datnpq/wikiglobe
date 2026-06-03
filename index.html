@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="cities.js"></script><!-- global "civilization" index (works over file://) -->
+<script src="places.js"></script><!-- notable places index (densifies mid-zoom) -->
 <script src="events.js"></script><!-- dated history index for the time slider -->
 <style>
   :root{
@@ -219,7 +220,7 @@
   </div>
 </div>
 
-<div id="hint">🌍 Chấm vàng = <b>đô thị lớn</b> · xoay & <b>zoom vào</b> để mở mọi bài Wikipedia của vùng</div>
+<div id="hint">🌍 Chấm <b style="color:#ffd479">vàng</b> = đô thị · <b style="color:#cc785c">cam</b> = danh thắng/di sản · xoay & <b>zoom vào</b> để xem mọi bài</div>
 
 <div id="timebar">
   <div id="erband" title="Các giai đoạn lịch sử Việt Nam"></div>
@@ -249,6 +250,7 @@
 const EMPTY = {type:'FeatureCollection', features:[]};
 let LANG = 'vi';
 let CITIES = [];                 // global "civilization" index from cities.js
+let PLACES = [];                 // notable-places index from places.js (mid-zoom density)
 let EVENTS = [];                 // dated history index from events.js
 let timeMode = false;            // time slider active → globe shows history
 // Wikipedia's geosearch gsbbox caps the box by AREA (~0.033 deg² empirically),
@@ -337,17 +339,19 @@ map.on('load',()=>{
     layout:{visibility:'none','text-field':['get','point_count_abbreviated'],'text-size':13,
       'text-font':['Open Sans Bold','Noto Sans Bold']},
     paint:{'text-color':'#2a1c05'}});
+  const KIND_COLOR=['match',['get','kind'],'place','#cc785c','#ffd479'];
   map.addLayer({id:'cities-glow',type:'circle',source:'cities',filter:['!',['has','point_count']],
     layout:{visibility:'none'},
-    paint:{'circle-color':'#ffd479','circle-radius':13,'circle-opacity':.14}});
+    paint:{'circle-color':KIND_COLOR,'circle-radius':13,'circle-opacity':.13}});
   map.addLayer({id:'cities-point',type:'circle',source:'cities',filter:['!',['has','point_count']],
     layout:{visibility:'none'},
     paint:{
-      'circle-color':'#ffd479','circle-radius':5.5,
-      'circle-stroke-width':2,'circle-stroke-color':'#c98a2e',
+      'circle-color':KIND_COLOR,'circle-radius':5.5,
+      'circle-stroke-width':2,'circle-stroke-color':['match',['get','kind'],'place','#8f3a24','#c98a2e'],
       'circle-opacity':.95,'circle-stroke-opacity':.6}});
 
   CITIES=(window.WIKIGLOBE_CITIES&&window.WIKIGLOBE_CITIES.cities)||[];
+  PLACES=(window.WIKIGLOBE_PLACES&&window.WIKIGLOBE_PLACES.places)||[];
   refreshGlobalTier();
 
   /* ----- time tier: dated historical events, colored by era ----- */
@@ -432,11 +436,15 @@ let lastGlobalCount=0;
 function refreshGlobalTier(){
   if(!map.getSource('cities')) return;
   const feats=[];
-  for(const c of CITIES){
-    const title=c[3][LANG]; if(!title) continue;
-    feats.push({type:'Feature',geometry:{type:'Point',coordinates:[c[0],c[1]]},
-      properties:{title,pop:c[2]}});
-  }
+  const add=(arr,kind)=>{
+    for(const c of arr){
+      const title=c[3][LANG]; if(!title) continue;
+      feats.push({type:'Feature',geometry:{type:'Point',coordinates:[c[0],c[1]]},
+        properties:{title,kind}});
+    }
+  };
+  add(CITIES,'city');     // warm-gold dots
+  add(PLACES,'place');    // coral dots — heritage, landmarks, nature…
   lastGlobalCount=feats.length;
   map.getSource('cities').setData({type:'FeatureCollection',features:feats});
 }
@@ -461,8 +469,8 @@ function updateTiers(){
     map.getSource('wiki').setData(EMPTY);
     hint.style.opacity=1;
     count.textContent = lastGlobalCount
-      ? `${lastGlobalCount.toLocaleString('vi-VN')} đô thị lớn · zoom vào để xem mọi bài`
-      : 'Đang tải bản đồ văn minh…';
+      ? `${lastGlobalCount.toLocaleString('vi-VN')} địa điểm nổi bật · zoom vào để xem mọi bài`
+      : 'Đang tải bản đồ tri thức…';
   } else {
     hint.style.opacity=0;
     loadArticles();
