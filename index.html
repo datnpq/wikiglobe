@@ -49,6 +49,27 @@
   #count{pointer-events:auto;font-size:12px;color:var(--muted);background:var(--panel);
     border:1px solid var(--line);border-radius:999px;padding:6px 12px;backdrop-filter:blur(10px)}
 
+  /* search */
+  #search{pointer-events:auto;position:relative;width:min(300px,42vw)}
+  #search .field{display:flex;align-items:center;gap:7px;background:var(--panel);
+    border:1px solid var(--line);border-radius:999px;padding:7px 14px;backdrop-filter:blur(10px);
+    transition:border-color .15s}
+  #search.focus .field{border-color:var(--accent)}
+  #search .ico{color:var(--muted);font-size:13px;flex:none}
+  #q{all:unset;flex:1;color:var(--txt);font-size:13.5px;min-width:0}
+  #q::placeholder{color:var(--muted)}
+  #results{position:absolute;top:46px;left:0;right:0;background:var(--panel);
+    border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(14px);overflow:hidden;
+    box-shadow:0 16px 40px rgba(0,0,0,.5)}
+  #results:empty{display:none}
+  #results .row{padding:10px 14px;font-size:13px;color:var(--txt);cursor:pointer;
+    border-bottom:1px solid var(--line);line-height:1.3;transition:background .12s}
+  #results .row:last-child{border-bottom:none}
+  #results .row:hover,#results .row.sel{background:rgba(90,209,255,.12)}
+  #results .row small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #results .row.msg{color:var(--muted);cursor:default}
+
   /* hint */
   #hint{position:absolute;z-index:4;left:50%;bottom:26px;transform:translateX(-50%);
     background:var(--panel);border:1px solid var(--line);border-radius:999px;
@@ -84,6 +105,12 @@
 
 <div id="bar">
   <div id="brand"><span class="dot"></span>WikiGlobe<small>tri thức theo địa lý</small></div>
+  <div id="search">
+    <div class="field"><span class="ico">🔍</span>
+      <input id="q" type="text" placeholder="Tìm địa điểm…" autocomplete="off"
+        spellcheck="false" enterkeyhint="search" /></div>
+    <div id="results"></div>
+  </div>
   <div class="spacer"></div>
   <div id="count">Đang chờ…</div>
   <div class="pill" id="lang">
@@ -376,6 +403,69 @@ document.getElementById('lang').addEventListener('click',e=>{
   [...e.currentTarget.children].forEach(b=>b.classList.toggle('on',b===btn));
   refreshGlobalTier(); updateTiers(); writeHash();
 });
+
+/* ---------- place search (Nominatim geocoder) ---------- */
+const qInput=document.getElementById('q');
+const resBox=document.getElementById('results');
+const searchEl=document.getElementById('search');
+let searchTimer=0, searchSeq=0, hits=[], selIdx=-1;
+
+function clearResults(){ resBox.innerHTML=''; hits=[]; selIdx=-1; }
+function renderMsg(text){ resBox.innerHTML=`<div class="row msg">${text}</div>`; }
+
+function renderResults(){
+  resBox.innerHTML=hits.map((h,i)=>{
+    const name=h.display_name, comma=name.indexOf(', ');
+    const head=comma<0?name:name.slice(0,comma), rest=comma<0?'':name.slice(comma+2);
+    return `<div class="row${i===selIdx?' sel':''}" data-i="${i}">${head}`+
+           (rest?`<small>${rest}</small>`:'')+`</div>`;
+  }).join('');
+}
+
+async function runSearch(query){
+  const my=++searchSeq;
+  renderMsg('Đang tìm…');
+  try{
+    const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6'+
+      `&accept-language=${LANG}&q=${encodeURIComponent(query)}`;
+    const r=await fetch(url,{headers:{'Accept':'application/json'}});
+    const j=await r.json();
+    if(my!==searchSeq) return;            // superseded by a newer keystroke
+    hits=j; selIdx=-1;
+    if(!hits.length){ renderMsg('Không tìm thấy địa điểm'); return; }
+    renderResults();
+  }catch(e){ if(my===searchSeq) renderMsg('Lỗi tìm kiếm'); }
+}
+
+function gotoHit(h){
+  if(!h) return;
+  const bb=h.boundingbox;                 // [south, north, west, east] as strings
+  if(bb){
+    map.fitBounds([[+bb[2],+bb[0]],[+bb[3],+bb[1]]],{padding:80,maxZoom:13,duration:1200});
+  }else{
+    map.flyTo({center:[+h.lon,+h.lat],zoom:11,duration:1200});
+  }
+  clearResults(); qInput.value=h.display_name.split(', ')[0]; qInput.blur();
+}
+
+qInput.addEventListener('input',()=>{
+  const v=qInput.value.trim();
+  clearTimeout(searchTimer);
+  if(v.length<2){ clearResults(); return; }
+  searchTimer=setTimeout(()=>runSearch(v),350);   // debounce + respect Nominatim rate limit
+});
+qInput.addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'){ e.preventDefault(); if(hits.length){selIdx=(selIdx+1)%hits.length;renderResults();} }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); if(hits.length){selIdx=(selIdx-1+hits.length)%hits.length;renderResults();} }
+  else if(e.key==='Enter'){ if(hits.length) gotoHit(hits[selIdx>=0?selIdx:0]); }
+  else if(e.key==='Escape'){ clearResults(); qInput.blur(); }
+});
+resBox.addEventListener('mousedown',e=>{               // mousedown beats input blur
+  const row=e.target.closest('.row[data-i]'); if(!row) return;
+  e.preventDefault(); gotoHit(hits[+row.dataset.i]);
+});
+qInput.addEventListener('focus',()=>{ searchEl.classList.add('focus'); });
+qInput.addEventListener('blur',()=>{ searchEl.classList.remove('focus'); setTimeout(clearResults,120); });
 </script>
 </body>
 </html>

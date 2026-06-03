@@ -23,7 +23,7 @@ Ký hiệu ưu tiên: 🔥 cao · ⭐ trung bình · 💤 để sau. Effort: ⏱
 Mục tiêu: từ "demo đẹp" → "công cụ dùng được mỗi ngày".
 
 - [x] 🔥 **Deep-link & URL state** ⏱️S — hash `#zoom/lat/lng/lang`, khôi phục camera + ngôn ngữ khi mở; chia sẻ đúng cảnh. *(xong)*
-- [ ] 🔥 **Search box** ⏱️M — gõ tên địa điểm → geocode (Nominatim/Wikidata) → bay tới. Cửa ngõ khám phá chính.
+- [x] 🔥 **Search box** ⏱️M — gõ tên địa điểm → Nominatim → bay tới (fitBounds); autocomplete, phím ↑↓/Enter/Esc. *(xong)*
 - [ ] 🔥 **Time slider lịch sử** ⏱️L — kéo theo năm; lọc bài theo `P585`/năm sinh-mất; sự kiện & nhân vật hiện theo dòng thời gian. *Tính năng "wow" định danh sản phẩm.*
 - [ ] ⭐ **Hover preview** ⏱️S — rê chuột vào chấm hiện tooltip tên + ảnh nhỏ (prefetch summary).
 - [ ] ⭐ **Sửa panel che nút ngôn ngữ** ⏱️S — trên desktop panel phải đè pill ngôn ngữ; dời pill/đẩy layout khi panel mở.
