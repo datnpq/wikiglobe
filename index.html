@@ -49,6 +49,9 @@
   .pill button.on{color:#06121f;background:linear-gradient(135deg,var(--accent),var(--accent2))}
   #count{pointer-events:auto;font-size:12px;color:var(--muted);background:var(--panel);
     border:1px solid var(--line);border-radius:999px;padding:6px 12px;backdrop-filter:blur(10px)}
+  /* when the article panel is open on desktop, slide the top-bar controls clear of it */
+  #bar{transition:padding-right .35s cubic-bezier(.4,0,.2,1)}
+  @media(min-width:760px){ body.panelopen #bar{padding-right:calc(min(420px,92vw) + 30px)} }
 
   /* search */
   #search{pointer-events:auto;position:relative;width:min(300px,42vw)}
@@ -95,7 +98,8 @@
     font-size:13.5px;font-weight:600;color:var(--txt);transition:.15s}
   #countries button:hover{border-color:var(--accent);transform:translateY(-2px);
     box-shadow:0 8px 24px rgba(90,209,255,.18)}
-  #countries button .flag{font-size:20px;line-height:1}
+  #countries button .flag{width:24px;height:16px;border-radius:3px;object-fit:cover;flex:none;
+    box-shadow:0 0 0 1px rgba(255,255,255,.12)}
   #skip{all:unset;cursor:pointer;color:var(--muted);font-size:13px;text-decoration:underline;
     text-underline-offset:3px}
   #skip:hover{color:var(--accent)}
@@ -106,14 +110,26 @@
 
   /* time slider (bottom) */
   #timebar{position:absolute;z-index:6;left:50%;bottom:24px;
-    transform:translateX(-50%) translateY(180%);transition:transform .4s cubic-bezier(.4,0,.2,1);
-    display:flex;align-items:center;gap:14px;width:min(720px,94vw);
+    transform:translateX(-50%) translateY(200%);transition:transform .4s cubic-bezier(.4,0,.2,1);
+    display:flex;flex-direction:column;align-items:stretch;gap:9px;width:min(720px,94vw);
     background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 18px;
     backdrop-filter:blur(14px);box-shadow:0 16px 50px rgba(0,0,0,.5)}
   #timebar.on{transform:translateX(-50%)}
-  #play{all:unset;cursor:pointer;width:38px;height:38px;flex:none;border-radius:50%;text-align:center;
-    line-height:38px;font-size:14px;color:var(--accent);background:rgba(90,209,255,.14)}
-  #year{flex:1;-webkit-appearance:none;appearance:none;height:5px;border-radius:5px;outline:none;
+  .trow{display:flex;align-items:center;gap:14px}
+  #erband{position:relative;height:20px;border-radius:6px;overflow:hidden;
+    background:rgba(255,255,255,.04)}
+  #erband .seg{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center;
+    font-size:9px;font-weight:800;letter-spacing:.2px;color:rgba(0,0,0,.55);cursor:pointer;
+    overflow:hidden;white-space:nowrap;border-right:1px solid rgba(0,0,0,.22);transition:filter .15s}
+  #erband .seg:hover{filter:brightness(1.18)}
+  #erband .seg.cur{box-shadow:inset 0 0 0 2px #fff,0 0 12px rgba(255,255,255,.4)}
+  #eraname{flex:1;font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:7px}
+  #eraname .vnflag{width:20px;height:14px;border-radius:2px;object-fit:cover;flex:none;
+    box-shadow:0 0 0 1px rgba(255,255,255,.15)}
+  #play{all:unset;cursor:pointer;width:36px;height:36px;flex:none;border-radius:50%;text-align:center;
+    line-height:36px;font-size:14px;color:var(--accent);background:rgba(90,209,255,.14)}
+  #year{width:100%;-webkit-appearance:none;appearance:none;height:5px;border-radius:5px;outline:none;
     background:linear-gradient(90deg,#ff5a5a,#ff9a3c,#ffd479,#c08bff,#7aa0ff,#5ad1ff)}
   #year::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
     background:#fff;cursor:pointer;box-shadow:0 0 10px var(--accent),0 0 0 4px rgba(255,255,255,.12)}
@@ -123,6 +139,14 @@
     text-align:center;background:linear-gradient(135deg,var(--accent),var(--accent2));
     -webkit-background-clip:text;background-clip:text;color:transparent}
   #ecount{font-size:11px;color:var(--muted);min-width:62px;text-align:right;line-height:1.25}
+
+  /* hover preview tooltip */
+  #tip{position:fixed;z-index:8;pointer-events:none;opacity:0;transform:translate(-50%,-100%);
+    transition:opacity .12s;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:7px 10px;backdrop-filter:blur(10px);width:188px;box-shadow:0 12px 32px rgba(0,0,0,.55)}
+  #tip.show{opacity:1}
+  #tip .t{font-size:12.5px;font-weight:600;color:var(--txt);line-height:1.3}
+  #tip img{display:none;width:100%;height:88px;object-fit:cover;border-radius:6px;margin-top:6px}
 
   /* hint */
   #hint{position:absolute;z-index:4;left:50%;bottom:26px;transform:translateX(-50%);
@@ -189,11 +213,17 @@
 <div id="hint">🌍 Chấm vàng = <b>đô thị lớn</b> · xoay & <b>zoom vào</b> để mở mọi bài Wikipedia của vùng</div>
 
 <div id="timebar">
-  <button id="play" title="Tự chạy">▶</button>
+  <div id="erband" title="Các giai đoạn lịch sử Việt Nam"></div>
   <input id="year" type="range" min="-1830" max="2026" value="1500" step="1" aria-label="Năm" />
-  <div id="yearlabel">1500</div>
-  <div id="ecount"></div>
+  <div class="trow">
+    <button id="play" title="Tự chạy">▶</button>
+    <div id="eraname"></div>
+    <div id="yearlabel">1500</div>
+    <div id="ecount"></div>
+  </div>
 </div>
+
+<div id="tip"><div class="t"></div><img alt=""></div>
 
 <aside id="panel">
   <button id="close">×</button>
@@ -360,6 +390,11 @@ map.on('load',()=>{
     map.on('mouseleave',ly,()=>map.getCanvas().style.cursor='');
   }
 
+  for(const ly of ['point','cities-point','events-point']){
+    map.on('mousemove',ly,showTip);
+    map.on('mouseleave',ly,hideTip);
+  }
+
   map.on('moveend',()=>{ updateTiers(); writeHash(); });
   map.on('idle',tickIdle);    // idle-only motion: free spin, or orbit a chosen country
   syncLangPill(); updateTiers();
@@ -499,6 +534,7 @@ async function loadArticles(){
 const panel=document.getElementById('panel');
 async function openArticle(props){
   panel.classList.add('open');
+  document.body.classList.add('panelopen');
   document.getElementById('p-title').textContent=props.title;
   document.getElementById('p-meta').textContent='Đang tải…';
   document.getElementById('p-extract').textContent='';
@@ -518,7 +554,37 @@ async function openArticle(props){
     document.getElementById('hero').style.backgroundImage=img?`url(${img})`:'none';
   }catch(e){ document.getElementById('p-meta').textContent='Không tải được nội dung.'; }
 }
-document.getElementById('close').onclick=()=>panel.classList.remove('open');
+document.getElementById('close').onclick=()=>{
+  panel.classList.remove('open'); document.body.classList.remove('panelopen');
+};
+
+/* ---------- hover preview tooltip (title + thumbnail) ---------- */
+const tip=document.getElementById('tip');
+const tipTitle=tip.querySelector('.t'), tipImg=tip.querySelector('img');
+const thumbCache=new Map();   // title → thumbnail URL ('' = none / in-flight)
+function fetchThumb(title){
+  if(thumbCache.has(title)) return;
+  thumbCache.set(title,'');
+  fetch(`https://${LANG}.wikipedia.org/api/rest_v1/page/summary/`+encodeURIComponent(title))
+    .then(r=>r.json()).then(j=>{
+      const src=(j.thumbnail&&j.thumbnail.source)||'';
+      thumbCache.set(title,src);
+      if(src && tip.classList.contains('show') && tipTitle.textContent===title){
+        tipImg.src=src; tipImg.style.display='block';
+      }
+    }).catch(()=>{});
+}
+function showTip(e){
+  const title=e.features[0].properties.title;
+  tip.style.left=e.point.x+'px';
+  tip.style.top=(e.point.y-14)+'px';
+  tipTitle.textContent=title;
+  const cached=thumbCache.get(title);
+  if(cached){ tipImg.src=cached; tipImg.style.display='block'; }
+  else { tipImg.style.display='none'; if(cached===undefined) fetchThumb(title); }
+  tip.classList.add('show');
+}
+function hideTip(){ tip.classList.remove('show'); }
 
 /* ---------- language switch ---------- */
 document.getElementById('lang').addEventListener('click',e=>{
@@ -538,6 +604,44 @@ const playBtn=document.getElementById('play');
 const EVENT_WINDOW=25;            // ± years shown around the selected year
 let playTimer=0;
 
+/* Vietnamese history periodised (non-overlapping) — the first detailed case.
+   Other countries can later get their own era table; VN is the reference. */
+const VN_ERAS=[
+  {n:'Hồng Bàng – Âu Lạc', short:'Hồng Bàng', s:-2879, e:-208, c:'#8d6e63'},
+  {n:'Bắc thuộc',           short:'Bắc thuộc', s:-207,  e:938,  c:'#a1887f'},
+  {n:'Ngô – Đinh – Tiền Lê',short:'Ngô–Đinh', s:939,   e:1009, c:'#ef9a9a'},
+  {n:'Nhà Lý',              short:'Lý',        s:1009,  e:1225, c:'#ffcc80'},
+  {n:'Nhà Trần – Hồ',       short:'Trần–Hồ',   s:1225,  e:1407, c:'#fff59d'},
+  {n:'Thuộc Minh',          short:'Minh',      s:1407,  e:1427, c:'#c5e1a5'},
+  {n:'Nhà Lê',              short:'Lê',        s:1428,  e:1788, c:'#80cbc4'},
+  {n:'Tây Sơn',             short:'Tây Sơn',   s:1788,  e:1802, c:'#81d4fa'},
+  {n:'Nhà Nguyễn',          short:'Nguyễn',    s:1802,  e:1945, c:'#b39ddb'},
+  {n:'Hiện đại',            short:'Hiện đại',  s:1945,  e:2026, c:'#90caf9'},
+];
+const erband=document.getElementById('erband');
+const eraname=document.getElementById('eraname');
+function eraPct(y){ const a=+yearSlider.min,b=+yearSlider.max;
+  return (Math.max(a,Math.min(b,y))-a)/(b-a)*100; }
+function buildEraBand(){
+  erband.innerHTML=VN_ERAS.map((e,i)=>{
+    const l=eraPct(e.s), w=eraPct(e.e)-l;
+    return `<div class="seg" data-i="${i}" style="left:${l}%;width:${w}%;background:${e.c}"`+
+      ` title="${e.n} (${fmtYear(e.s)} – ${fmtYear(e.e)})">${w>3.5?e.short:''}</div>`;
+  }).join('');
+  erband.onclick=ev=>{
+    const seg=ev.target.closest('.seg'); if(!seg) return;
+    const e=VN_ERAS[+seg.dataset.i];
+    const mid=Math.round((Math.max(+yearSlider.min,e.s)+Math.min(+yearSlider.max,e.e))/2);
+    stopPlay(); yearSlider.value=mid; refreshEvents();
+  };
+}
+function updateEra(y){
+  const cur=VN_ERAS.find(e=>y>=e.s && y<=e.e);
+  eraname.innerHTML='<img class="vnflag" src="https://flagcdn.com/vn.svg" alt="VN"> '+
+    (cur ? cur.n : 'Dòng sử Việt');
+  [...erband.children].forEach((el,i)=>el.classList.toggle('cur',VN_ERAS[i]===cur));
+}
+
 function fmtYear(y){ return y<0 ? (-y)+' TCN' : ''+y; }
 
 function refreshEvents(){
@@ -552,6 +656,7 @@ function refreshEvents(){
   map.getSource('events').setData({type:'FeatureCollection',features:feats});
   yearLabel.textContent=fmtYear(year);
   ecount.textContent=feats.length+' sự kiện';
+  updateEra(year);
   writeHash();
 }
 
@@ -575,7 +680,7 @@ function setTimeMode(on){
             'clusters','cluster-count','point-glow','point'],false);
     document.getElementById('hint').style.opacity=0;
     document.getElementById('count').textContent='Dòng thời gian · '+EVENTS.length+' mốc lịch sử';
-    refreshEvents();
+    buildEraBand(); refreshEvents();
   }else{
     stopPlay();
     map.getSource('events').setData(EMPTY);
@@ -662,30 +767,30 @@ satbtn.onclick=()=>{
 
 /* ---------- onboarding: pick a country → cinematic fly-in + orbit ---------- */
 const COUNTRIES=[
-  {f:'🇻🇳',n:'Việt Nam',center:[106.0,16.2],z:4.8},
-  {f:'🇯🇵',n:'Nhật Bản',center:[138.2,37.5],z:4.3},
-  {f:'🇫🇷',n:'Pháp',center:[2.4,46.6],z:4.8},
-  {f:'🇮🇹',n:'Ý',center:[12.5,42.6],z:4.8},
-  {f:'🇬🇧',n:'Anh',center:[-2.0,54.0],z:4.6},
-  {f:'🇪🇸',n:'Tây Ban Nha',center:[-3.7,40.2],z:4.8},
-  {f:'🇬🇷',n:'Hy Lạp',center:[22.5,39.0],z:5.0},
-  {f:'🇪🇬',n:'Ai Cập',center:[30.0,26.5],z:4.6},
-  {f:'🇹🇷',n:'Thổ Nhĩ Kỳ',center:[35.0,39.0],z:4.6},
-  {f:'🇨🇳',n:'Trung Quốc',center:[104.0,35.0],z:3.4},
-  {f:'🇮🇳',n:'Ấn Độ',center:[79.0,22.0],z:3.8},
-  {f:'🇰🇷',n:'Hàn Quốc',center:[127.8,36.3],z:5.5},
-  {f:'🇹🇭',n:'Thái Lan',center:[101.0,15.0],z:4.7},
-  {f:'🇮🇩',n:'Indonesia',center:[118.0,-2.0],z:3.6},
-  {f:'🇺🇸',n:'Hoa Kỳ',center:[-98.0,39.0],z:3.2},
-  {f:'🇲🇽',n:'Mexico',center:[-102.0,23.5],z:3.8},
-  {f:'🇧🇷',n:'Brazil',center:[-51.0,-10.0],z:3.2},
-  {f:'🇵🇪',n:'Peru',center:[-75.0,-9.5],z:4.2},
-  {f:'🇷🇺',n:'Nga',center:[90.0,62.0],z:2.5},
-  {f:'🇩🇪',n:'Đức',center:[10.4,51.2],z:4.8},
-  {f:'🇸🇪',n:'Thụy Điển',center:[16.0,63.0],z:3.8},
-  {f:'🇦🇺',n:'Úc',center:[134.0,-25.0],z:3.4},
-  {f:'🇿🇦',n:'Nam Phi',center:[25.0,-29.0],z:4.2},
-  {f:'🇲🇦',n:'Maroc',center:[-7.0,31.8],z:4.7},
+  {cc:'vn',n:'Việt Nam',center:[106.0,16.2],z:4.8},
+  {cc:'jp',n:'Nhật Bản',center:[138.2,37.5],z:4.3},
+  {cc:'fr',n:'Pháp',center:[2.4,46.6],z:4.8},
+  {cc:'it',n:'Ý',center:[12.5,42.6],z:4.8},
+  {cc:'gb',n:'Anh',center:[-2.0,54.0],z:4.6},
+  {cc:'es',n:'Tây Ban Nha',center:[-3.7,40.2],z:4.8},
+  {cc:'gr',n:'Hy Lạp',center:[22.5,39.0],z:5.0},
+  {cc:'eg',n:'Ai Cập',center:[30.0,26.5],z:4.6},
+  {cc:'tr',n:'Thổ Nhĩ Kỳ',center:[35.0,39.0],z:4.6},
+  {cc:'cn',n:'Trung Quốc',center:[104.0,35.0],z:3.4},
+  {cc:'in',n:'Ấn Độ',center:[79.0,22.0],z:3.8},
+  {cc:'kr',n:'Hàn Quốc',center:[127.8,36.3],z:5.5},
+  {cc:'th',n:'Thái Lan',center:[101.0,15.0],z:4.7},
+  {cc:'id',n:'Indonesia',center:[118.0,-2.0],z:3.6},
+  {cc:'us',n:'Hoa Kỳ',center:[-98.0,39.0],z:3.2},
+  {cc:'mx',n:'Mexico',center:[-102.0,23.5],z:3.8},
+  {cc:'br',n:'Brazil',center:[-51.0,-10.0],z:3.2},
+  {cc:'pe',n:'Peru',center:[-75.0,-9.5],z:4.2},
+  {cc:'ru',n:'Nga',center:[90.0,62.0],z:2.5},
+  {cc:'de',n:'Đức',center:[10.4,51.2],z:4.8},
+  {cc:'se',n:'Thụy Điển',center:[16.0,63.0],z:3.8},
+  {cc:'au',n:'Úc',center:[134.0,-25.0],z:3.4},
+  {cc:'za',n:'Nam Phi',center:[25.0,-29.0],z:4.2},
+  {cc:'ma',n:'Maroc',center:[-7.0,31.8],z:4.7},
 ];
 const onboard=document.getElementById('onboard');
 function openOnboard(){ onboard.classList.remove('hide'); }
@@ -696,7 +801,8 @@ function flyToCountry(ct){
 }
 function initOnboard(){
   document.getElementById('countries').innerHTML=COUNTRIES.map((c,i)=>
-    `<button data-i="${i}"><span class="flag">${c.f}</span>${c.n}</button>`).join('');
+    `<button data-i="${i}"><img class="flag" src="https://flagcdn.com/${c.cc}.svg" `+
+    `alt="" loading="lazy" width="24" height="16">${c.n}</button>`).join('');
   document.getElementById('countries').addEventListener('click',e=>{
     const b=e.target.closest('button[data-i]'); if(!b) return;
     flyToCountry(COUNTRIES[+b.dataset.i]);

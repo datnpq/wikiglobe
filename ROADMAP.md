@@ -26,8 +26,10 @@ Mục tiêu: từ "demo đẹp" → "công cụ dùng được mỗi ngày".
 - [x] 🔥 **Search box** ⏱️M — gõ tên địa điểm → Nominatim → bay tới (fitBounds); autocomplete, phím ↑↓/Enter/Esc. *(xong)*
 - [x] 🔥 **Time slider lịch sử** ⏱️L — `events.js` (8.8k sự kiện có `P585`+`P625` từ Wikidata, 1830 TCN→2026); kéo năm → globe hiện sự kiện trong cửa sổ ±25y, tô màu theo thời đại, glow theo độ gần; play tự chạy; chia sẻ khoảnh khắc qua hash `/t<năm>`. *(xong)*
 - [x] 🔥 **Onboarding chọn quốc gia + orbit + vệ tinh** ⏱️M — màn mở chọn nước → bay cinematic (pitch 45°) & xoay quanh; nút 🛰 bật ảnh vệ tinh Esri; click cụm bay kiểu điện ảnh. *(xong)*
-- [ ] ⭐ **Hover preview** ⏱️S — rê chuột vào chấm hiện tooltip tên + ảnh nhỏ (prefetch summary).
-- [ ] ⭐ **Sửa panel che nút ngôn ngữ** ⏱️S — trên desktop panel phải đè pill ngôn ngữ; dời pill/đẩy layout khi panel mở.
+- [x] ⭐ **Dải giai đoạn sử Việt Nam** ⏱️M — time slider hiện 10 giai đoạn sử VN (Hồng Bàng→Hiện đại) tô màu + nhãn; kéo tới đâu hiện triều đại + cờ VN; click giai đoạn nhảy tới. VN là case chi tiết đầu tiên. *(xong)*
+- [x] ⭐ **Cờ thật (SVG)** ⏱️S — flag emoji → ảnh flagcdn, đẹp trên mọi OS. *(xong)*
+- [x] ⭐ **Hover preview** ⏱️S — rê chuột vào chấm → tooltip tên + ảnh (prefetch summary, có cache). *(xong)*
+- [x] ⭐ **Sửa panel che nút ngôn ngữ** ⏱️S — panel mở → dịch controls top-bar sang trái (desktop). *(xong)*
 - [ ] ⭐ **i18n UI chrome** ⏱️M — hiện chữ giao diện chỉ tiếng Việt; tách chuỗi theo `LANG`.
 - [ ] 💤 **Loading skeleton + retry mạng** ⏱️S — trạng thái tải mượt, nút thử lại khi lỗi.
 
