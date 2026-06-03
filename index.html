@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>WikiGlobe — Tri thức quay vòng quanh Trái Đất</title>
+<link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<style>
+  :root{
+    --bg:#05070f; --panel:rgba(12,16,28,.86); --line:rgba(120,150,220,.18);
+    --txt:#e7ecf7; --muted:#8a96b5; --accent:#5ad1ff; --accent2:#a98bff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;overflow:hidden}
+  /* starfield behind the globe */
+  body::before{content:"";position:fixed;inset:0;z-index:0;
+    background:
+      radial-gradient(1.5px 1.5px at 20% 30%, #fff8, transparent),
+      radial-gradient(1.5px 1.5px at 70% 60%, #fff6, transparent),
+      radial-gradient(1px 1px at 40% 80%, #fff7, transparent),
+      radial-gradient(1px 1px at 85% 25%, #fff5, transparent),
+      radial-gradient(1.5px 1.5px at 55% 15%, #fff6, transparent),
+      radial-gradient(1px 1px at 10% 70%, #fff5, transparent),
+      radial-gradient(2px 2px at 90% 85%, #fff7, transparent),
+      radial-gradient(1px 1px at 30% 50%, #fff4, transparent),
+      radial-gradient(circle at 50% 40%, #0a1430 0%, #05070f 60%);
+    background-repeat:no-repeat}
+  #map{position:absolute;inset:0;z-index:1;background:transparent}
+  .maplibregl-canvas{outline:none}
+
+  /* top bar */
+  #bar{position:absolute;z-index:5;top:0;left:0;right:0;display:flex;align-items:center;
+    gap:14px;padding:14px 18px;pointer-events:none}
+  #brand{pointer-events:auto;display:flex;align-items:center;gap:10px;font-weight:700;
+    letter-spacing:.2px;font-size:16px}
+  #brand .dot{width:11px;height:11px;border-radius:50%;
+    background:radial-gradient(circle at 30% 30%,var(--accent),var(--accent2));
+    box-shadow:0 0 12px var(--accent)}
+  #brand small{font-weight:500;color:var(--muted);font-size:11.5px;margin-left:2px}
+  .spacer{flex:1}
+  .pill{pointer-events:auto;display:flex;background:var(--panel);border:1px solid var(--line);
+    border-radius:999px;padding:3px;backdrop-filter:blur(10px)}
+  .pill button{all:unset;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;
+    padding:6px 13px;border-radius:999px;transition:.15s}
+  .pill button.on{color:#06121f;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  #count{pointer-events:auto;font-size:12px;color:var(--muted);background:var(--panel);
+    border:1px solid var(--line);border-radius:999px;padding:6px 12px;backdrop-filter:blur(10px)}
+
+  /* hint */
+  #hint{position:absolute;z-index:4;left:50%;bottom:26px;transform:translateX(-50%);
+    background:var(--panel);border:1px solid var(--line);border-radius:999px;
+    padding:9px 18px;font-size:13px;color:var(--muted);backdrop-filter:blur(10px);
+    transition:opacity .4s;pointer-events:none}
+  #hint b{color:var(--accent)}
+
+  /* article panel */
+  #panel{position:absolute;z-index:6;top:0;right:0;height:100%;width:min(420px,92vw);
+    background:var(--panel);border-left:1px solid var(--line);backdrop-filter:blur(16px);
+    transform:translateX(105%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+    display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.5)}
+  #panel.open{transform:none}
+  #panel .hero{height:190px;background:#0d1424;background-size:cover;background-position:center;
+    position:relative;flex:none}
+  #panel .hero::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(to bottom,transparent 40%,var(--panel))}
+  #close{position:absolute;top:12px;right:12px;z-index:2;all:unset;cursor:pointer;
+    width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.45);text-align:center;
+    line-height:32px;font-size:18px;color:#fff}
+  #panel .body{padding:0 22px 24px;overflow:auto}
+  #panel h1{font-size:22px;margin:-30px 0 4px;position:relative;line-height:1.2}
+  #panel .meta{font-size:12px;color:var(--accent);margin-bottom:14px}
+  #panel .extract{font-size:14.5px;line-height:1.65;color:#cfd7ea}
+  #panel a.read{display:inline-block;margin-top:18px;text-decoration:none;font-weight:600;
+    font-size:13.5px;color:#06121f;padding:10px 18px;border-radius:10px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .loading{padding:40px 22px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="bar">
+  <div id="brand"><span class="dot"></span>WikiGlobe<small>tri thức theo địa lý</small></div>
+  <div class="spacer"></div>
+  <div id="count">Đang chờ…</div>
+  <div class="pill" id="lang">
+    <button data-lang="vi" class="on">VI</button>
+    <button data-lang="en">EN</button>
+    <button data-lang="fr">FR</button>
+    <button data-lang="ja">日本</button>
+  </div>
+</div>
+
+<div id="hint">🌍 Xoay & <b>zoom vào</b> một vùng để thấy các bài Wikipedia tại đó</div>
+
+<aside id="panel">
+  <button id="close">×</button>
+  <div class="hero" id="hero"></div>
+  <div class="body">
+    <h1 id="p-title"></h1>
+    <div class="meta" id="p-meta"></div>
+    <div class="extract" id="p-extract"></div>
+    <a class="read" id="p-link" target="_blank" rel="noopener">Đọc toàn bộ trên Wikipedia →</a>
+  </div>
+</aside>
+
+<script>
+const EMPTY = {type:'FeatureCollection', features:[]};
+let LANG = 'vi';
+
+const map = new maplibregl.Map({
+  container:'map',
+  style:{
+    version:8,
+    glyphs:'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+    sources:{
+      carto:{type:'raster',tileSize:256,attribution:'© OpenStreetMap, © CARTO',
+        tiles:[
+          'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+          'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+          'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+          'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png']}
+    },
+    layers:[
+      {id:'space',type:'background',paint:{'background-color':'#05070f'}},
+      {id:'carto',type:'raster',source:'carto'}
+    ]
+  },
+  center:[108.2,14.0], zoom:2.2, attributionControl:false,
+  canvasContextAttributes:{antialias:true}
+});
+map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-left');
+map.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
+
+map.on('style.load',()=> map.setProjection({type:'globe'}));
+
+map.on('load',()=>{
+  map.addSource('wiki',{type:'geojson',data:EMPTY,cluster:true,clusterRadius:48,clusterMaxZoom:11});
+
+  map.addLayer({id:'clusters',type:'circle',source:'wiki',filter:['has','point_count'],
+    paint:{
+      'circle-color':['interpolate',['linear'],['get','point_count'],
+        1,'#2a6fb0', 25,'#5ad1ff', 100,'#a98bff'],
+      'circle-radius':['interpolate',['linear'],['get','point_count'],1,15,25,24,100,36],
+      'circle-opacity':.85,'circle-stroke-width':1.5,'circle-stroke-color':'#0a1430'}});
+  map.addLayer({id:'cluster-count',type:'symbol',source:'wiki',filter:['has','point_count'],
+    layout:{'text-field':['get','point_count_abbreviated'],'text-size':13,
+      'text-font':['Open Sans Bold','Noto Sans Bold']},
+    paint:{'text-color':'#06121f'}});
+
+  map.addLayer({id:'point',type:'circle',source:'wiki',filter:['!',['has','point_count']],
+    paint:{
+      'circle-color':'#5ad1ff','circle-radius':6,
+      'circle-stroke-width':2,'circle-stroke-color':'#a98bff',
+      'circle-opacity':.95,'circle-stroke-opacity':.6}});
+  map.addLayer({id:'point-glow',type:'circle',source:'wiki',filter:['!',['has','point_count']],
+    paint:{'circle-color':'#5ad1ff','circle-radius':14,'circle-opacity':.12},'beforeId':'point'});
+
+  map.on('click','clusters',(e)=>{
+    const f=map.queryRenderedFeatures(e.point,{layers:['clusters']})[0];
+    map.getSource('wiki').getClusterExpansionZoom(f.properties.cluster_id).then(z=>{
+      map.easeTo({center:f.geometry.coordinates,zoom:z+0.4,duration:700});
+    });
+  });
+  map.on('click','point',(e)=>openArticle(e.features[0].properties));
+  for(const ly of ['clusters','point']){
+    map.on('mouseenter',ly,()=>map.getCanvas().style.cursor='pointer');
+    map.on('mouseleave',ly,()=>map.getCanvas().style.cursor='');
+  }
+
+  map.on('moveend',()=>{ spinGlobe(); loadArticles(); });
+  spinGlobe(); loadArticles();
+});
+
+/* ---------- spinning globe (idle only, when zoomed out) ---------- */
+let userInteracting=false;
+const SECONDS_PER_REV=140;
+function spinGlobe(){
+  if(userInteracting || map.getZoom()>=4) return;
+  const c=map.getCenter(); c.lng -= 360/SECONDS_PER_REV;
+  map.easeTo({center:c,duration:1000,easing:n=>n});
+}
+['mousedown','touchstart','wheel'].forEach(ev=>
+  map.on(ev,()=>{userInteracting=true}));
+['mouseup','touchend','dragend'].forEach(ev=>
+  map.on(ev,()=>{userInteracting=false; spinGlobe();}));
+
+/* ---------- fetch Wikipedia geosearch by viewport bbox ---------- */
+let reqId=0;
+async function loadArticles(){
+  if(!map.getSource('wiki')) return;
+  const z=map.getZoom();
+  const hint=document.getElementById('hint');
+  if(z<4.5){ // bbox too large for the API at low zoom
+    map.getSource('wiki').setData(EMPTY);
+    document.getElementById('count').textContent='Zoom vào để khám phá';
+    hint.style.opacity=1; return;
+  }
+  hint.style.opacity=0;
+  const b=map.getBounds();
+  let w=b.getWest(), e=b.getEast(), s=b.getSouth(), n=b.getNorth();
+  if(e<w) return;                       // crosses antimeridian → skip this frame
+  if((e-w)>15 || (n-s)>15) return;      // still too wide for gsbbox
+  const my=++reqId;
+  const url=`https://${LANG}.wikipedia.org/w/api.php?action=query&format=json&origin=*`+
+            `&list=geosearch&gslimit=500&gsbbox=${n}%7C${w}%7C${s}%7C${e}`;
+  document.getElementById('count').textContent='Đang tải…';
+  try{
+    const r=await fetch(url); const j=await r.json();
+    if(my!==reqId) return;              // a newer request superseded this one
+    const list=(j.query&&j.query.geosearch)||[];
+    const fc={type:'FeatureCollection',features:list.map(a=>({
+      type:'Feature',
+      geometry:{type:'Point',coordinates:[a.lon,a.lat]},
+      properties:{title:a.title,pageid:a.pageid}
+    }))};
+    map.getSource('wiki').setData(fc);
+    document.getElementById('count').textContent=
+      list.length? `${list.length} bài trong khung nhìn` : 'Không có bài ở vùng này';
+  }catch(err){ document.getElementById('count').textContent='Lỗi mạng'; }
+}
+
+/* ---------- article panel via REST summary ---------- */
+const panel=document.getElementById('panel');
+async function openArticle(props){
+  panel.classList.add('open');
+  document.getElementById('p-title').textContent=props.title;
+  document.getElementById('p-meta').textContent='Đang tải…';
+  document.getElementById('p-extract').textContent='';
+  document.getElementById('hero').style.backgroundImage='none';
+  try{
+    const r=await fetch(`https://${LANG}.wikipedia.org/api/rest_v1/page/summary/`+
+      encodeURIComponent(props.title));
+    const j=await r.json();
+    document.getElementById('p-title').textContent=j.title||props.title;
+    document.getElementById('p-meta').textContent=
+      (j.description||'Bài viết Wikipedia')+' · '+LANG.toUpperCase();
+    document.getElementById('p-extract').textContent=j.extract||'(Không có tóm tắt)';
+    document.getElementById('p-link').href=
+      (j.content_urls&&j.content_urls.desktop.page)||
+      `https://${LANG}.wikipedia.org/?curid=${props.pageid}`;
+    const img=j.thumbnail&&j.thumbnail.source;
+    document.getElementById('hero').style.backgroundImage=img?`url(${img})`:'none';
+  }catch(e){ document.getElementById('p-meta').textContent='Không tải được nội dung.'; }
+}
+document.getElementById('close').onclick=()=>panel.classList.remove('open');
+
+/* ---------- language switch ---------- */
+document.getElementById('lang').addEventListener('click',e=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  LANG=btn.dataset.lang;
+  [...e.currentTarget.children].forEach(b=>b.classList.toggle('on',b===btn));
+  loadArticles();
+});
+</script>
+</body>
+</html>
