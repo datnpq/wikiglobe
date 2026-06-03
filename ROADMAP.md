@@ -22,7 +22,7 @@ Ký hiệu ưu tiên: 🔥 cao · ⭐ trung bình · 💤 để sau. Effort: ⏱
 ## 🚧 Phase 1 — Trải nghiệm cốt lõi (làm tiếp)
 Mục tiêu: từ "demo đẹp" → "công cụ dùng được mỗi ngày".
 
-- [ ] 🔥 **Deep-link & URL state** ⏱️S — đồng bộ `#lat,lng,zoom,lang` vào URL → chia sẻ đúng vị trí; mở lại đúng cảnh. Nền tảng cho mọi tính năng share.
+- [x] 🔥 **Deep-link & URL state** ⏱️S — hash `#zoom/lat/lng/lang`, khôi phục camera + ngôn ngữ khi mở; chia sẻ đúng cảnh. *(xong)*
 - [ ] 🔥 **Search box** ⏱️M — gõ tên địa điểm → geocode (Nominatim/Wikidata) → bay tới. Cửa ngõ khám phá chính.
 - [ ] 🔥 **Time slider lịch sử** ⏱️L — kéo theo năm; lọc bài theo `P585`/năm sinh-mất; sự kiện & nhân vật hiện theo dòng thời gian. *Tính năng "wow" định danh sản phẩm.*
 - [ ] ⭐ **Hover preview** ⏱️S — rê chuột vào chấm hiện tooltip tên + ảnh nhỏ (prefetch summary).
