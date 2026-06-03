@@ -6,6 +6,7 @@
 <title>WikiGlobe — Tri thức quay vòng quanh Trái Đất</title>
 <link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet" />
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="cities.js"></script><!-- global "civilization" index (works over file://) -->
 <style>
   :root{
     --bg:#05070f; --panel:rgba(12,16,28,.86); --line:rgba(120,150,220,.18);
@@ -93,7 +94,7 @@
   </div>
 </div>
 
-<div id="hint">🌍 Xoay & <b>zoom vào</b> một vùng để thấy các bài Wikipedia tại đó</div>
+<div id="hint">🌍 Chấm vàng = <b>đô thị lớn</b> · xoay & <b>zoom vào</b> để mở mọi bài Wikipedia của vùng</div>
 
 <aside id="panel">
   <button id="close">×</button>
@@ -109,6 +110,12 @@
 <script>
 const EMPTY = {type:'FeatureCollection', features:[]};
 let LANG = 'vi';
+let CITIES = [];                 // global "civilization" index from cities.js
+// Wikipedia's geosearch gsbbox caps the box by AREA (~0.033 deg² empirically),
+// not by zoom. So the live tier grid-samples the viewport into small cells and
+// merges them. CELL² must stay under that cap; MAX_CELLS bounds parallel requests.
+const CELL = 0.16;               // degrees per grid cell side (0.16² ≈ 0.026 deg²)
+const MAX_CELLS = 28;            // above this the viewport is too big → global tier
 
 const map = new maplibregl.Map({
   container:'map',
@@ -131,6 +138,7 @@ const map = new maplibregl.Map({
   center:[108.2,14.0], zoom:2.2, attributionControl:false,
   canvasContextAttributes:{antialias:true}
 });
+window.map = map;   // expose for console debugging
 map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-left');
 map.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
 
@@ -158,6 +166,44 @@ map.on('load',()=>{
   map.addLayer({id:'point-glow',type:'circle',source:'wiki',filter:['!',['has','point_count']],
     paint:{'circle-color':'#5ad1ff','circle-radius':14,'circle-opacity':.12},'beforeId':'point'});
 
+  /* ----- global "civilization" tier: notable cities from cities.json ----- */
+  map.addSource('cities',{type:'geojson',data:EMPTY,cluster:true,clusterRadius:46,clusterMaxZoom:6});
+  map.addLayer({id:'cities-clusters',type:'circle',source:'cities',filter:['has','point_count'],
+    layout:{visibility:'none'},
+    paint:{
+      'circle-color':['interpolate',['linear'],['get','point_count'],
+        1,'#c98a2e', 25,'#ffd479', 150,'#ffe9b0'],
+      'circle-radius':['interpolate',['linear'],['get','point_count'],1,14,25,22,150,34],
+      'circle-opacity':.85,'circle-stroke-width':1.5,'circle-stroke-color':'#2a1c05'}});
+  map.addLayer({id:'cities-cluster-count',type:'symbol',source:'cities',filter:['has','point_count'],
+    layout:{visibility:'none','text-field':['get','point_count_abbreviated'],'text-size':13,
+      'text-font':['Open Sans Bold','Noto Sans Bold']},
+    paint:{'text-color':'#2a1c05'}});
+  map.addLayer({id:'cities-glow',type:'circle',source:'cities',filter:['!',['has','point_count']],
+    layout:{visibility:'none'},
+    paint:{'circle-color':'#ffd479','circle-radius':13,'circle-opacity':.14}});
+  map.addLayer({id:'cities-point',type:'circle',source:'cities',filter:['!',['has','point_count']],
+    layout:{visibility:'none'},
+    paint:{
+      'circle-color':'#ffd479','circle-radius':5.5,
+      'circle-stroke-width':2,'circle-stroke-color':'#c98a2e',
+      'circle-opacity':.95,'circle-stroke-opacity':.6}});
+
+  CITIES=(window.WIKIGLOBE_CITIES&&window.WIKIGLOBE_CITIES.cities)||[];
+  refreshGlobalTier();
+
+  map.on('click','cities-clusters',(e)=>{
+    const f=map.queryRenderedFeatures(e.point,{layers:['cities-clusters']})[0];
+    map.getSource('cities').getClusterExpansionZoom(f.properties.cluster_id).then(z=>{
+      map.easeTo({center:f.geometry.coordinates,zoom:z+0.4,duration:700});
+    });
+  });
+  map.on('click','cities-point',(e)=>openArticle(e.features[0].properties));
+  for(const ly of ['cities-clusters','cities-point']){
+    map.on('mouseenter',ly,()=>map.getCanvas().style.cursor='pointer');
+    map.on('mouseleave',ly,()=>map.getCanvas().style.cursor='');
+  }
+
   map.on('click','clusters',(e)=>{
     const f=map.queryRenderedFeatures(e.point,{layers:['clusters']})[0];
     map.getSource('wiki').getClusterExpansionZoom(f.properties.cluster_id).then(z=>{
@@ -170,56 +216,108 @@ map.on('load',()=>{
     map.on('mouseleave',ly,()=>map.getCanvas().style.cursor='');
   }
 
-  map.on('moveend',()=>{ spinGlobe(); loadArticles(); });
-  spinGlobe(); loadArticles();
+  map.on('moveend',updateTiers);
+  map.on('idle',spinGlobe);   // idle-only spin: never fights a programmatic easeTo
+  updateTiers();
 });
+
+/* ---------- tier orchestration: global cities vs live geosearch ---------- */
+const setVis=(ids,on)=>ids.forEach(id=>
+  map.getLayer(id)&&map.setLayoutProperty(id,'visibility',on?'visible':'none'));
+
+let lastGlobalCount=0;
+function refreshGlobalTier(){
+  if(!map.getSource('cities')) return;
+  const feats=[];
+  for(const c of CITIES){
+    const title=c[3][LANG]; if(!title) continue;
+    feats.push({type:'Feature',geometry:{type:'Point',coordinates:[c[0],c[1]]},
+      properties:{title,pop:c[2]}});
+  }
+  lastGlobalCount=feats.length;
+  map.getSource('cities').setData({type:'FeatureCollection',features:feats});
+}
+
+// How many grid cells the current viewport needs; Infinity if it wraps the
+// antimeridian (we skip those frames). Drives the tier choice.
+function viewportCells(){
+  const b=map.getBounds();
+  const w=b.getWest(), e=b.getEast(), s=b.getSouth(), n=b.getNorth();
+  if(e<=w) return Infinity;
+  return Math.ceil((e-w)/CELL)*Math.ceil((n-s)/CELL);
+}
+
+function updateTiers(){
+  if(!map.getSource('cities')||!map.getSource('wiki')) return;
+  const global = viewportCells() > MAX_CELLS;   // viewport too big for live grid
+  setVis(['cities-clusters','cities-cluster-count','cities-glow','cities-point'], global);
+  setVis(['clusters','cluster-count','point-glow','point'], !global);
+  const hint=document.getElementById('hint'), count=document.getElementById('count');
+  if(global){
+    map.getSource('wiki').setData(EMPTY);
+    hint.style.opacity=1;
+    count.textContent = lastGlobalCount
+      ? `${lastGlobalCount.toLocaleString('vi-VN')} đô thị lớn · zoom vào để xem mọi bài`
+      : 'Đang tải bản đồ văn minh…';
+  } else {
+    hint.style.opacity=0;
+    loadArticles();
+  }
+}
 
 /* ---------- spinning globe (idle only, when zoomed out) ---------- */
 let userInteracting=false;
 const SECONDS_PER_REV=140;
 function spinGlobe(){
-  if(userInteracting || map.getZoom()>=4) return;
+  // Bail while any easeTo/flyTo is in flight (e.g. a cluster-click zoom) so the
+  // idle spin never hijacks programmatic navigation; the chain resumes on moveend.
+  if(userInteracting || map.isMoving() || map.getZoom()>=4) return;
   const c=map.getCenter(); c.lng -= 360/SECONDS_PER_REV;
   map.easeTo({center:c,duration:1000,easing:n=>n});
 }
 ['mousedown','touchstart','wheel'].forEach(ev=>
   map.on(ev,()=>{userInteracting=true}));
 ['mouseup','touchend','dragend'].forEach(ev=>
-  map.on(ev,()=>{userInteracting=false; spinGlobe();}));
+  map.on(ev,()=>{userInteracting=false;}));   // 'idle' resumes the spin on its own
 
-/* ---------- fetch Wikipedia geosearch by viewport bbox ---------- */
+/* ---------- live tier: grid-sample the viewport via Wikipedia geosearch ----------
+   gsbbox rejects boxes above ~0.033 deg², so one viewport request fails almost
+   everywhere. Instead split the viewport into ≤MAX_CELLS small cells, fetch them
+   in parallel, and merge + dedupe by pageid into a single layer. */
 let reqId=0;
 async function loadArticles(){
   if(!map.getSource('wiki')) return;
-  const z=map.getZoom();
-  const hint=document.getElementById('hint');
-  if(z<4.5){ // bbox too large for the API at low zoom
-    map.getSource('wiki').setData(EMPTY);
-    document.getElementById('count').textContent='Zoom vào để khám phá';
-    hint.style.opacity=1; return;
-  }
-  hint.style.opacity=0;
   const b=map.getBounds();
-  let w=b.getWest(), e=b.getEast(), s=b.getSouth(), n=b.getNorth();
-  if(e<w) return;                       // crosses antimeridian → skip this frame
-  if((e-w)>15 || (n-s)>15) return;      // still too wide for gsbbox
+  const w=b.getWest(), e=b.getEast(), s=b.getSouth(), n=b.getNorth();
+  if(e<=w) return;                       // crosses antimeridian → skip this frame
+  const cols=Math.ceil((e-w)/CELL), rows=Math.ceil((n-s)/CELL);
+  if(cols*rows>MAX_CELLS) return;        // updateTiers should have kept us global
+
   const my=++reqId;
-  const url=`https://${LANG}.wikipedia.org/w/api.php?action=query&format=json&origin=*`+
-            `&list=geosearch&gslimit=500&gsbbox=${n}%7C${w}%7C${s}%7C${e}`;
   document.getElementById('count').textContent='Đang tải…';
+  const cells=[];
+  for(let i=0;i<cols;i++) for(let j=0;j<rows;j++){
+    const cw=w+i*CELL, ce=Math.min(cw+CELL,e);
+    const cs=s+j*CELL, cn=Math.min(cs+CELL,n);
+    cells.push(`${cn}%7C${cw}%7C${cs}%7C${ce}`);
+  }
   try{
-    const r=await fetch(url); const j=await r.json();
-    if(my!==reqId) return;              // a newer request superseded this one
-    const list=(j.query&&j.query.geosearch)||[];
-    const fc={type:'FeatureCollection',features:list.map(a=>({
-      type:'Feature',
-      geometry:{type:'Point',coordinates:[a.lon,a.lat]},
-      properties:{title:a.title,pageid:a.pageid}
-    }))};
-    map.getSource('wiki').setData(fc);
+    const lists=await Promise.all(cells.map(box=>
+      fetch(`https://${LANG}.wikipedia.org/w/api.php?action=query&format=json&origin=*`+
+            `&list=geosearch&gslimit=500&gsbbox=${box}`)
+        .then(r=>r.json()).then(j=>(j.query&&j.query.geosearch)||[]).catch(()=>[])));
+    if(my!==reqId) return;               // a newer request superseded this one
+    const seen=new Set(), features=[];
+    for(const list of lists) for(const a of list){
+      if(seen.has(a.pageid)) continue; seen.add(a.pageid);
+      features.push({type:'Feature',
+        geometry:{type:'Point',coordinates:[a.lon,a.lat]},
+        properties:{title:a.title,pageid:a.pageid}});
+    }
+    map.getSource('wiki').setData({type:'FeatureCollection',features});
     document.getElementById('count').textContent=
-      list.length? `${list.length} bài trong khung nhìn` : 'Không có bài ở vùng này';
-  }catch(err){ document.getElementById('count').textContent='Lỗi mạng'; }
+      features.length? `${features.length} bài trong khung nhìn` : 'Không có bài ở vùng này';
+  }catch(err){ if(my===reqId) document.getElementById('count').textContent='Lỗi mạng'; }
 }
 
 /* ---------- article panel via REST summary ---------- */
@@ -252,7 +350,7 @@ document.getElementById('lang').addEventListener('click',e=>{
   const btn=e.target.closest('button'); if(!btn) return;
   LANG=btn.dataset.lang;
   [...e.currentTarget.children].forEach(b=>b.classList.toggle('on',b===btn));
-  loadArticles();
+  refreshGlobalTier(); updateTiers();
 });
 </script>
 </body>

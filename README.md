@@ -6,11 +6,14 @@
 
 ## ✨ Tính năng (MVP)
 - **Globe 3D** (MapLibre GL v5 `projection: globe`) tự xoay khi idle, trên nền sao.
-- **GeoSearch theo viewport** — map di tới đâu, load bài Wikipedia tới đó (`list=geosearch&gsbbox`).
+- **Dữ liệu 2 tầng** — globe **luôn sáng**:
+  - *Tầng văn minh* (zoom xa): ~4.000 đô thị lớn toàn cầu nạp sẵn từ `cities.js`, chấm vàng.
+  - *Tầng live* (zoom gần): geosearch Wikipedia thật theo viewport, chấm cyan.
+- **Grid-sampling** — chia khung nhìn thành ô nhỏ rồi gộp, vượt giới hạn diện tích `gsbbox`.
 - **Clustering** — zoom xa gom cụm, zoom gần tách từng bài.
 - **Panel bài viết** — ảnh + tóm tắt + link đọc full (REST `page/summary`).
-- **Đa ngôn ngữ** — VI / EN / FR / 日本, đổi tức thì.
-- **Zero backend, zero build, zero API key** — một file `index.html` tự chứa.
+- **Đa ngôn ngữ** — VI / EN / FR / 日本, đổi tức thì (tầng văn minh rebuild theo ngôn ngữ).
+- **Zero backend, zero build, zero API key** — mở `index.html` là chạy (kể cả `file://`).
 
 ## 🚀 Chạy
 Mở thẳng `index.html` bằng trình duyệt. Xong.
@@ -21,17 +24,29 @@ Mở thẳng `index.html` bằng trình duyệt. Xong.
 Trình duyệt
  ├─ MapLibre GL v5  → globe + clustering + render
  ├─ Carto dark tiles → basemap vũ trụ
- ├─ Wikipedia GeoSearch API (gsbbox)  → toạ độ bài theo khung nhìn
- └─ Wikipedia REST summary API        → nội dung bài khi click
+ ├─ cities.js (tĩnh)  → tầng văn minh toàn cầu khi zoom xa
+ ├─ Wikipedia GeoSearch API (gsbbox, grid-sample) → bài theo khung nhìn khi zoom gần
+ └─ Wikipedia REST summary API → nội dung bài khi click
+
+Build (1 lần): scripts/build-cities.mjs  ──Wikidata SPARQL──▶ cities.js
 ```
 Tất cả gọi trực tiếp từ client (CORS `origin=*`). Không server riêng.
 
+### 🔄 Tạo lại `cities.js`
+```
+node scripts/build-cities.mjs
+```
+Query Wikidata Query Service (đô thị `P31`, dân số > 80k) + sitelink vi/en/fr/ja,
+xuất `window.WIKIGLOBE_CITIES`. Nạp qua thẻ `<script src>` nên chạy được cả khi mở `file://`.
+
 ## ⚠️ Giới hạn MVP (cố ý)
-- Zoom xa toàn cầu **không load chấm** — `gsbbox` của Wikipedia chặn bbox quá lớn → gate ở zoom ~4.5.
-- Tối đa 500 bài / viewport (giới hạn API).
+- `gsbbox` của Wikipedia chặn box theo **diện tích** (~0.033°²) → tầng live chỉ bật khi viewport đủ nhỏ (≈ zoom ≥ 10); zoom trung gian hiển thị các đô thị lớn của tầng văn minh.
+- Tối đa 500 bài / ô lưới.
+- Tầng văn minh chỉ gồm đô thị; địa danh/di tích chưa có.
 
 ## 🗺️ Roadmap
-- [ ] **Cache geo-index → Supabase**: thấy "dải sáng tri thức" toàn cầu kể cả khi zoom xa, không phụ thuộc giới hạn `gsbbox`.
+- [x] **Tầng văn minh toàn cầu** (`cities.js` từ Wikidata): globe luôn sáng khi zoom xa.
+- [ ] **Cache geo-index → Supabase**: tri thức dày đặc kể cả zoom trung gian, không phụ thuộc giới hạn `gsbbox`.
 - [ ] **Time slider** 🔥: kéo theo năm, sự kiện/nhân vật hiện theo dòng lịch sử.
 - [ ] **Heatmap**: vùng dày tri thức sáng rực — "bản đồ văn minh".
 - [ ] **Next.js + deploy** (Vercel / Miaoda) để có link chia sẻ.
