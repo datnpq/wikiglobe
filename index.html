@@ -5,29 +5,34 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>WikiGlobe — Tri thức quay vòng quanh Trái Đất</title>
 <link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="cities.js"></script><!-- global "civilization" index (works over file://) -->
 <script src="events.js"></script><!-- dated history index for the time slider -->
 <style>
   :root{
-    --bg:#05070f; --panel:rgba(12,16,28,.86); --line:rgba(120,150,220,.18);
-    --txt:#e7ecf7; --muted:#8a96b5; --accent:#5ad1ff; --accent2:#a98bff;
+    /* Anthropic / Claude palette: warm paper, clay-coral accent, editorial serif */
+    --bg:#16130d; --panel:rgba(247,245,238,.95); --line:rgba(40,34,24,.12);
+    --txt:#2b2925; --muted:#75716a; --accent:#cc785c; --accent2:#b3543a;
+    --brand:#f3efe4; --serif:"Newsreader",Georgia,"Times New Roman",serif;
   }
   *{box-sizing:border-box}
   html,body{height:100%;margin:0;background:var(--bg);color:var(--txt);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;overflow:hidden}
-  /* starfield behind the globe */
+  /* starfield behind the globe (warm dusk cosmos) */
   body::before{content:"";position:fixed;inset:0;z-index:0;
     background:
       radial-gradient(1.5px 1.5px at 20% 30%, #fff8, transparent),
-      radial-gradient(1.5px 1.5px at 70% 60%, #fff6, transparent),
+      radial-gradient(1.5px 1.5px at 70% 60%, #ffeede9c, transparent),
       radial-gradient(1px 1px at 40% 80%, #fff7, transparent),
       radial-gradient(1px 1px at 85% 25%, #fff5, transparent),
-      radial-gradient(1.5px 1.5px at 55% 15%, #fff6, transparent),
+      radial-gradient(1.5px 1.5px at 55% 15%, #ffe9d6a0, transparent),
       radial-gradient(1px 1px at 10% 70%, #fff5, transparent),
       radial-gradient(2px 2px at 90% 85%, #fff7, transparent),
       radial-gradient(1px 1px at 30% 50%, #fff4, transparent),
-      radial-gradient(circle at 50% 40%, #0a1430 0%, #05070f 60%);
+      radial-gradient(circle at 50% 40%, #3a2a1c 0%, #16130d 62%);
     background-repeat:no-repeat}
   #map{position:absolute;inset:0;z-index:1;background:transparent}
   .maplibregl-canvas{outline:none}
@@ -35,18 +40,20 @@
   /* top bar */
   #bar{position:absolute;z-index:5;top:0;left:0;right:0;display:flex;align-items:center;
     gap:14px;padding:14px 18px;pointer-events:none}
-  #brand{pointer-events:auto;display:flex;align-items:center;gap:10px;font-weight:700;
-    letter-spacing:.2px;font-size:16px}
+  #brand{pointer-events:auto;flex:none;display:flex;align-items:center;gap:9px;font-family:var(--serif);
+    font-weight:600;letter-spacing:.2px;font-size:20px;color:var(--brand);white-space:nowrap;
+    text-shadow:0 1px 12px rgba(0,0,0,.5)}
   #brand .dot{width:11px;height:11px;border-radius:50%;
     background:radial-gradient(circle at 30% 30%,var(--accent),var(--accent2));
-    box-shadow:0 0 12px var(--accent)}
-  #brand small{font-weight:500;color:var(--muted);font-size:11.5px;margin-left:2px}
+    box-shadow:0 0 14px var(--accent)}
+  #brand small{font-family:-apple-system,system-ui,sans-serif;font-weight:500;
+    color:rgba(243,239,228,.62);font-size:11.5px;margin-left:2px}
   .spacer{flex:1}
   .pill{pointer-events:auto;display:flex;background:var(--panel);border:1px solid var(--line);
     border-radius:999px;padding:3px;backdrop-filter:blur(10px)}
   .pill button{all:unset;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;
     padding:6px 13px;border-radius:999px;transition:.15s}
-  .pill button.on{color:#06121f;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .pill button.on{color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2))}
   #count{pointer-events:auto;font-size:12px;color:var(--muted);background:var(--panel);
     border:1px solid var(--line);border-radius:999px;padding:6px 12px;backdrop-filter:blur(10px)}
   /* when the article panel is open on desktop, slide the top-bar controls clear of it */
@@ -69,7 +76,7 @@
   #results .row{padding:10px 14px;font-size:13px;color:var(--txt);cursor:pointer;
     border-bottom:1px solid var(--line);line-height:1.3;transition:background .12s}
   #results .row:last-child{border-bottom:none}
-  #results .row:hover,#results .row.sel{background:rgba(90,209,255,.12)}
+  #results .row:hover,#results .row.sel{background:rgba(204,120,92,.13)}
   #results .row small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #results .row.msg{color:var(--muted);cursor:default}
@@ -78,29 +85,30 @@
   #timetoggle,#satbtn{all:unset;pointer-events:auto;cursor:pointer;font-size:12.5px;font-weight:600;
     color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:999px;
     padding:7px 13px;backdrop-filter:blur(10px);transition:.15s;white-space:nowrap}
-  #timetoggle.on,#satbtn.on{color:#06121f;
+  #timetoggle.on,#satbtn.on{color:#fff;
     background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent}
 
   /* onboarding: pick a country */
   #onboard{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:22px;padding:24px;text-align:center;
-    background:radial-gradient(circle at 50% 30%,rgba(10,20,48,.82),rgba(5,7,15,.94));
+    background:radial-gradient(circle at 50% 32%,rgba(58,42,28,.78),rgba(22,19,13,.95));
     backdrop-filter:blur(8px);transition:opacity .5s}
   #onboard.hide{opacity:0;pointer-events:none}
-  #onboard h2{margin:0;font-size:clamp(22px,4vw,34px);font-weight:800;letter-spacing:.3px}
+  #onboard h2{margin:0;font-family:var(--serif);font-size:clamp(26px,4.4vw,40px);
+    font-weight:500;letter-spacing:.2px;color:var(--brand)}
   #onboard h2 .g{background:linear-gradient(135deg,var(--accent),var(--accent2));
     -webkit-background-clip:text;background-clip:text;color:transparent}
-  #onboard p{margin:0;color:var(--muted);font-size:14px;max-width:440px;line-height:1.5}
+  #onboard p{margin:0;color:rgba(243,239,228,.66);font-size:14.5px;max-width:460px;line-height:1.55}
   #countries{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;
     width:min(720px,92vw);max-height:46vh;overflow:auto;padding:4px}
   #countries button{all:unset;cursor:pointer;display:flex;align-items:center;gap:9px;
     padding:11px 13px;border-radius:12px;background:var(--panel);border:1px solid var(--line);
     font-size:13.5px;font-weight:600;color:var(--txt);transition:.15s}
   #countries button:hover{border-color:var(--accent);transform:translateY(-2px);
-    box-shadow:0 8px 24px rgba(90,209,255,.18)}
+    box-shadow:0 8px 24px rgba(204,120,92,.22)}
   #countries button .flag{width:24px;height:16px;border-radius:3px;object-fit:cover;flex:none;
     box-shadow:0 0 0 1px rgba(255,255,255,.12)}
-  #skip{all:unset;cursor:pointer;color:var(--muted);font-size:13px;text-decoration:underline;
+  #skip{all:unset;cursor:pointer;color:rgba(243,239,228,.7);font-size:13px;text-decoration:underline;
     text-underline-offset:3px}
   #skip:hover{color:var(--accent)}
   /* reopen-onboard button (bottom-left, above attribution) */
@@ -128,7 +136,7 @@
   #eraname .vnflag{width:20px;height:14px;border-radius:2px;object-fit:cover;flex:none;
     box-shadow:0 0 0 1px rgba(255,255,255,.15)}
   #play{all:unset;cursor:pointer;width:36px;height:36px;flex:none;border-radius:50%;text-align:center;
-    line-height:36px;font-size:14px;color:var(--accent);background:rgba(90,209,255,.14)}
+    line-height:36px;font-size:14px;color:var(--accent);background:rgba(204,120,92,.16)}
   #year{width:100%;-webkit-appearance:none;appearance:none;height:5px;border-radius:5px;outline:none;
     background:linear-gradient(90deg,#ff5a5a,#ff9a3c,#ffd479,#c08bff,#7aa0ff,#5ad1ff)}
   #year::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
@@ -161,7 +169,7 @@
     transform:translateX(105%);transition:transform .35s cubic-bezier(.4,0,.2,1);
     display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.5)}
   #panel.open{transform:none}
-  #panel .hero{height:190px;background:#0d1424;background-size:cover;background-position:center;
+  #panel .hero{height:190px;background:#e7e1d4;background-size:cover;background-position:center;
     position:relative;flex:none}
   #panel .hero::after{content:"";position:absolute;inset:0;
     background:linear-gradient(to bottom,transparent 40%,var(--panel))}
@@ -169,11 +177,12 @@
     width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.45);text-align:center;
     line-height:32px;font-size:18px;color:#fff}
   #panel .body{padding:0 22px 24px;overflow:auto}
-  #panel h1{font-size:22px;margin:-30px 0 4px;position:relative;line-height:1.2}
-  #panel .meta{font-size:12px;color:var(--accent);margin-bottom:14px}
-  #panel .extract{font-size:14.5px;line-height:1.65;color:#cfd7ea}
+  #panel h1{font-family:var(--serif);font-weight:500;font-size:26px;margin:-32px 0 4px;
+    position:relative;line-height:1.18}
+  #panel .meta{font-size:12px;font-weight:600;color:var(--accent);margin-bottom:14px}
+  #panel .extract{font-size:14.5px;line-height:1.7;color:#4a4641}
   #panel a.read{display:inline-block;margin-top:18px;text-decoration:none;font-weight:600;
-    font-size:13.5px;color:#06121f;padding:10px 18px;border-radius:10px;
+    font-size:13.5px;color:#fff;padding:10px 18px;border-radius:10px;
     background:linear-gradient(135deg,var(--accent),var(--accent2))}
   .loading{padding:40px 22px;color:var(--muted);font-size:14px}
 </style>
@@ -277,7 +286,7 @@ const map = new maplibregl.Map({
         tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}']}
     },
     layers:[
-      {id:'space',type:'background',paint:{'background-color':'#05070f'}},
+      {id:'space',type:'background',paint:{'background-color':'#16130d'}},
       {id:'carto',type:'raster',source:'carto'},
       {id:'satellite',type:'raster',source:'esri',layout:{visibility:'none'}}
     ]
@@ -299,21 +308,21 @@ map.on('load',()=>{
   map.addLayer({id:'clusters',type:'circle',source:'wiki',filter:['has','point_count'],
     paint:{
       'circle-color':['interpolate',['linear'],['get','point_count'],
-        1,'#2a6fb0', 25,'#5ad1ff', 100,'#a98bff'],
+        1,'#dca07e', 25,'#cc785c', 100,'#a8432a'],
       'circle-radius':['interpolate',['linear'],['get','point_count'],1,15,25,24,100,36],
-      'circle-opacity':.85,'circle-stroke-width':1.5,'circle-stroke-color':'#0a1430'}});
+      'circle-opacity':.9,'circle-stroke-width':1.5,'circle-stroke-color':'#fbf7ef'}});
   map.addLayer({id:'cluster-count',type:'symbol',source:'wiki',filter:['has','point_count'],
     layout:{'text-field':['get','point_count_abbreviated'],'text-size':13,
       'text-font':['Open Sans Bold','Noto Sans Bold']},
-    paint:{'text-color':'#06121f'}});
+    paint:{'text-color':'#fff'}});
 
   map.addLayer({id:'point',type:'circle',source:'wiki',filter:['!',['has','point_count']],
     paint:{
-      'circle-color':'#5ad1ff','circle-radius':6,
-      'circle-stroke-width':2,'circle-stroke-color':'#a98bff',
-      'circle-opacity':.95,'circle-stroke-opacity':.6}});
+      'circle-color':'#cc785c','circle-radius':6,
+      'circle-stroke-width':2,'circle-stroke-color':'#fbf2e8',
+      'circle-opacity':.95,'circle-stroke-opacity':.7}});
   map.addLayer({id:'point-glow',type:'circle',source:'wiki',filter:['!',['has','point_count']],
-    paint:{'circle-color':'#5ad1ff','circle-radius':14,'circle-opacity':.12},'beforeId':'point'});
+    paint:{'circle-color':'#cc785c','circle-radius':14,'circle-opacity':.14},'beforeId':'point'});
 
   /* ----- global "civilization" tier: notable cities from cities.json ----- */
   map.addSource('cities',{type:'geojson',data:EMPTY,cluster:true,clusterRadius:46,clusterMaxZoom:6});
