@@ -22,6 +22,8 @@ Ký hiệu ưu tiên: 🔥 cao · ⭐ trung bình · 💤 để sau. Effort: ⏱
 ## 🚧 Phase 1 — Trải nghiệm cốt lõi (làm tiếp)
 Mục tiêu: từ "demo đẹp" → "công cụ dùng được mỗi ngày".
 
+- [x] 🔥 **Tra cứu trực quan + tối ưu UI** ⏱️L — panel có mini-map locator (tile z0 + pin mercator), toạ độ, **bài lân cận** (geosearch chip bấm để nhảy), nút chia sẻ vị trí; **marker pulse** + auto-frame khi mở bài; **responsive** (bar icon-only ≤760px, không tràn ở 390px); **legend** màu chấm; `defer` data để first-paint nhanh. *(xong)*
+
 - [x] 🔥 **Deep-link & URL state** ⏱️S — hash `#zoom/lat/lng/lang`, khôi phục camera + ngôn ngữ khi mở; chia sẻ đúng cảnh. *(xong)*
 - [x] 🔥 **Search box** ⏱️M — gõ tên địa điểm → Nominatim → bay tới (fitBounds); autocomplete, phím ↑↓/Enter/Esc. *(xong)*
 - [x] 🔥 **Time slider lịch sử** ⏱️L — `events.js` (8.8k sự kiện có `P585`+`P625` từ Wikidata, 1830 TCN→2026); kéo năm → globe hiện sự kiện trong cửa sổ ±25y, tô màu theo thời đại, glow theo độ gần; play tự chạy; chia sẻ khoảnh khắc qua hash `/t<năm>`. *(xong)*

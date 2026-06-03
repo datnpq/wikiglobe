@@ -9,10 +9,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
-<script src="cities.js"></script><!-- global "civilization" index (works over file://) -->
-<script src="places.js"></script><!-- notable places index (densifies mid-zoom) -->
-<script src="events.js"></script><!-- dated history index for the time slider -->
-<script src="vn-events.js"></script><!-- curated Vietnamese-history backbone -->
+<!-- data is read inside map 'load' (after these run), so defer to unblock first paint -->
+<script defer src="cities.js"></script><!-- global "civilization" index (works over file://) -->
+<script defer src="places.js"></script><!-- notable places index (densifies mid-zoom) -->
+<script defer src="events.js"></script><!-- dated history index for the time slider -->
+<script defer src="vn-events.js"></script><!-- curated Vietnamese-history backbone -->
 <style>
   :root{
     /* Anthropic / Claude palette: warm paper, clay-coral accent, editorial serif */
@@ -86,7 +87,8 @@
   /* time-mode toggle (top bar) */
   #timetoggle,#satbtn,#surprise{all:unset;pointer-events:auto;cursor:pointer;font-size:12.5px;
     font-weight:600;color:var(--muted);background:var(--panel);border:1px solid var(--line);
-    border-radius:999px;padding:7px 13px;backdrop-filter:blur(10px);transition:.15s;white-space:nowrap}
+    border-radius:999px;padding:7px 13px;backdrop-filter:blur(10px);transition:.15s;white-space:nowrap;
+    display:inline-flex;align-items:center;gap:6px}
   #timetoggle.on,#satbtn.on,#surprise:hover{color:#fff;
     background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent}
 
@@ -190,10 +192,71 @@
     position:relative;line-height:1.18}
   #panel .meta{font-size:12px;font-weight:600;color:var(--accent);margin-bottom:14px}
   #panel .extract{font-size:14.5px;line-height:1.7;color:#4a4641}
-  #panel a.read{display:inline-block;margin-top:18px;text-decoration:none;font-weight:600;
-    font-size:13.5px;color:#fff;padding:10px 18px;border-radius:10px;
+  .pactions{display:flex;gap:8px;align-items:center;margin-top:18px}
+  #panel a.read{flex:1;text-align:center;text-decoration:none;font-weight:600;
+    font-size:13.5px;color:#fff;padding:11px 18px;border-radius:10px;
     background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .share{all:unset;cursor:pointer;flex:none;width:42px;height:42px;border-radius:10px;text-align:center;
+    line-height:42px;font-size:16px;color:var(--accent);background:rgba(204,120,92,.12);
+    border:1px solid var(--line);transition:.15s}
+  .share:hover{background:rgba(204,120,92,.22)}
+  .share.done{color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent}
+  /* mini-map locator (world z0 tile + mercator pin) */
+  #p-loc:empty{display:none}
+  #p-loc{margin-top:20px}
+  #p-loc .mini{position:relative;width:100%;max-width:236px;aspect-ratio:1;border-radius:12px;
+    overflow:hidden;border:1px solid var(--line);background:#11100c center/100% 100% no-repeat}
+  #p-loc .pin{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;
+    background:var(--accent);box-shadow:0 0 0 3px rgba(204,120,92,.4),0 0 10px var(--accent)}
+  #p-loc .coords{margin-top:8px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  /* nearby chips */
+  #p-nearby:empty{display:none}
+  #p-nearby{margin-top:18px}
+  #p-nearby h4{margin:0 0 9px;font-size:11px;font-weight:700;color:var(--muted);
+    text-transform:uppercase;letter-spacing:.6px}
+  #p-nearby .chips{display:flex;flex-wrap:wrap;gap:7px}
+  #p-nearby .chip{cursor:pointer;font-size:12.5px;padding:6px 11px;border-radius:999px;
+    background:rgba(40,34,24,.05);border:1px solid var(--line);color:var(--txt);transition:.15s;
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #p-nearby .chip:hover{border-color:var(--accent);color:var(--accent)}
   .loading{padding:40px 22px;color:var(--muted);font-size:14px}
+
+  /* pulse marker on the selected article */
+  .wg-pulse{width:13px;height:13px;border-radius:50%;background:var(--accent);cursor:pointer;
+    box-shadow:0 0 0 2px #fff8}
+  .wg-pulse::after{content:"";position:absolute;inset:-4px;border-radius:50%;
+    border:2px solid var(--accent);animation:wgpulse 1.7s ease-out infinite}
+  @keyframes wgpulse{0%{transform:scale(.6);opacity:.9}100%{transform:scale(2.6);opacity:0}}
+
+  /* tidy scrollbars (panel + onboarding) */
+  #panel .body,#countries,#results{scrollbar-width:thin;scrollbar-color:var(--accent) transparent}
+  #panel .body::-webkit-scrollbar,#countries::-webkit-scrollbar{width:8px}
+  #panel .body::-webkit-scrollbar-thumb,#countries::-webkit-scrollbar-thumb{
+    background:rgba(204,120,92,.45);border-radius:8px}
+
+  /* legend chip (bottom-left, dot key) */
+  #legend{position:absolute;z-index:4;left:14px;bottom:14px;display:flex;gap:12px;align-items:center;
+    background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 13px;
+    backdrop-filter:blur(10px);font-size:11.5px;color:var(--muted);pointer-events:none;
+    transition:opacity .3s}
+  #legend .k{display:flex;align-items:center;gap:5px}
+  #legend .d{width:9px;height:9px;border-radius:50%}
+
+  /* responsive: collapse the top bar to icons on narrow screens */
+  @media(max-width:760px){
+    #bar{gap:8px;padding:10px 12px}
+    #brand small{display:none}
+    #brand{font-size:18px}
+    #search{width:auto;flex:1 1 90px;min-width:0}
+    #surprise .lbl,#satbtn .lbl,#timetoggle .lbl{display:none}
+    #surprise,#satbtn,#timetoggle{padding:8px 11px}
+    #count{display:none}
+    #legend{left:50%;transform:translateX(-50%);bottom:84px}
+  }
+  @media(max-width:430px){
+    #brand .txt{display:none}
+    .pill button{padding:6px 9px;font-size:12px}
+  }
 </style>
 </head>
 <body>
@@ -209,7 +272,7 @@
 </div>
 
 <div id="bar">
-  <div id="brand"><span class="dot"></span>WikiGlobe<small>tri thức theo địa lý</small></div>
+  <div id="brand"><span class="dot"></span><span class="txt">WikiGlobe</span><small>tri thức theo địa lý</small></div>
   <div id="search">
     <div class="field"><span class="ico">🔍</span>
       <input id="q" type="text" placeholder="Tìm địa điểm…" autocomplete="off"
@@ -217,9 +280,9 @@
     <div id="results"></div>
   </div>
   <div class="spacer"></div>
-  <button id="surprise" title="Bay tới một địa danh bất ngờ">✨ Khám phá</button>
-  <button id="satbtn">🛰 Vệ tinh</button>
-  <button id="timetoggle">🕰 Dòng thời gian</button>
+  <button id="surprise" title="Bay tới một địa danh bất ngờ"><span class="ico">✨</span><span class="lbl"></span></button>
+  <button id="satbtn"><span class="ico">🛰</span><span class="lbl"></span></button>
+  <button id="timetoggle"><span class="ico">🕰</span><span class="lbl"></span></button>
   <div id="count">Đang chờ…</div>
   <div class="pill" id="lang">
     <button data-lang="vi" class="on">VI</button>
@@ -230,6 +293,11 @@
 </div>
 
 <div id="hint">🌍 Chấm <b style="color:#ffd479">vàng</b> = đô thị · <b style="color:#cc785c">cam</b> = danh thắng/di sản · xoay & <b>zoom vào</b> để xem mọi bài</div>
+
+<div id="legend">
+  <span class="k"><span class="d" style="background:#ffd479"></span><span class="l-city"></span></span>
+  <span class="k"><span class="d" style="background:#cc785c"></span><span class="l-place"></span></span>
+</div>
 
 <div id="timebar">
   <div id="erband" title="Các giai đoạn lịch sử Việt Nam"></div>
@@ -253,7 +321,12 @@
     <h1 id="p-title"></h1>
     <div class="meta" id="p-meta"></div>
     <div class="extract" id="p-extract"></div>
-    <a class="read" id="p-link" target="_blank" rel="noopener">Đọc toàn bộ trên Wikipedia →</a>
+    <div class="pactions">
+      <a class="read" id="p-link" target="_blank" rel="noopener">Đọc toàn bộ trên Wikipedia →</a>
+      <button class="share" id="p-share" title="Chia sẻ vị trí">⤴</button>
+    </div>
+    <div id="p-loc"></div>
+    <div id="p-nearby"></div>
   </div>
 </aside>
 
@@ -276,8 +349,9 @@ const LANGS = ['vi','en','fr','ja'];
 /* ---------- UI translations (chrome follows the chosen language) ---------- */
 const HINT=(g,c,rest)=>`Chấm <b style="color:#ffd479">${g}</b> · <b style="color:#cc785c">${c}</b> · ${rest}`;
 const I18N={
-  vi:{tagline:'tri thức theo địa lý',search:'Tìm địa điểm…',explore:'✨ Khám phá',sat:'🛰 Vệ tinh',
-    timeline:'🕰 Dòng thời gian',vnonly:'chỉ VN',
+  vi:{tagline:'tri thức theo địa lý',search:'Tìm địa điểm…',explore:'Khám phá',sat:'Vệ tinh',
+    timeline:'Dòng thời gian',vnonly:'chỉ VN',legCity:'đô thị',legPlace:'danh thắng',
+    nearby:'Lân cận',shared:'Đã chép link!',
     hint:HINT('vàng = đô thị','cam = danh thắng','xoay & <b>zoom vào</b> để xem mọi bài'),
     onboardH:'Bắt đầu hành trình từ <span class="g">đâu?</span>',
     onboardP:'Chọn một quốc gia — quả địa cầu sẽ bay tới và xoay quanh nơi đó. Hoặc khám phá tự do.',
@@ -288,8 +362,9 @@ const I18N={
     vihist:'Dòng sử Việt',wikiart:'Bài viết Wikipedia',nosum:'(Không có tóm tắt)',
     loaderr:'Không tải được nội dung.',searching:'Đang tìm…',noplace:'Không tìm thấy địa điểm',
     searcherr:'Lỗi tìm kiếm',bce:'TCN'},
-  en:{tagline:'knowledge by geography',search:'Search a place…',explore:'✨ Discover',sat:'🛰 Satellite',
-    timeline:'🕰 Timeline',vnonly:'VN only',
+  en:{tagline:'knowledge by geography',search:'Search a place…',explore:'Discover',sat:'Satellite',
+    timeline:'Timeline',vnonly:'VN only',legCity:'city',legPlace:'landmark',
+    nearby:'Nearby',shared:'Link copied!',
     hint:HINT('gold = city','coral = landmark','spin & <b>zoom in</b> to see every article'),
     onboardH:'Where does your journey <span class="g">begin?</span>',
     onboardP:'Pick a country — the globe flies there and orbits it. Or explore freely.',
@@ -300,8 +375,9 @@ const I18N={
     vihist:'Vietnamese history',wikiart:'Wikipedia article',nosum:'(No summary)',
     loaderr:'Could not load content.',searching:'Searching…',noplace:'No place found',
     searcherr:'Search error',bce:'BCE'},
-  fr:{tagline:'le savoir par la géographie',search:'Rechercher un lieu…',explore:'✨ Explorer',
-    sat:'🛰 Satellite',timeline:'🕰 Chronologie',vnonly:'Viêt Nam',
+  fr:{tagline:'le savoir par la géographie',search:'Rechercher un lieu…',explore:'Explorer',
+    sat:'Satellite',timeline:'Chronologie',vnonly:'Viêt Nam',legCity:'ville',legPlace:'site',
+    nearby:'À proximité',shared:'Lien copié !',
     hint:HINT('or = ville','corail = site','tournez & <b>zoomez</b> pour voir tous les articles'),
     onboardH:'Où commence votre <span class="g">voyage ?</span>',
     onboardP:'Choisissez un pays — le globe s’y rend et tourne autour. Ou explorez librement.',
@@ -312,8 +388,9 @@ const I18N={
     eventsVN:'{n} événements au Vietnam',vihist:'Histoire du Vietnam',wikiart:'Article Wikipédia',
     nosum:'(Pas de résumé)',loaderr:'Impossible de charger le contenu.',searching:'Recherche…',
     noplace:'Aucun lieu trouvé',searcherr:'Erreur de recherche',bce:'av. J.-C.'},
-  ja:{tagline:'地理でめぐる知識',search:'場所を検索…',explore:'✨ 発見',sat:'🛰 衛星',
-    timeline:'🕰 年表',vnonly:'ベトナム',
+  ja:{tagline:'地理でめぐる知識',search:'場所を検索…',explore:'発見',sat:'衛星',
+    timeline:'年表',vnonly:'ベトナム',legCity:'都市',legPlace:'名所',
+    nearby:'周辺',shared:'リンクをコピーしました',
     hint:HINT('金 = 都市','橙 = 名所','回して<b>ズーム</b>すると記事が見えます'),
     onboardH:'旅の出発点は<span class="g">どこ？</span>',
     onboardP:'国を選ぶと地球がそこへ飛び、周回します。自由に探索もできます。',
@@ -509,9 +586,11 @@ function renderCountries(){
 function applyI18n(){
   document.querySelector('#brand small').textContent=t('tagline');
   qInput.placeholder=t('search');
-  document.getElementById('surprise').textContent=t('explore');
-  satbtn.textContent=t('sat');
-  timetoggle.textContent=t('timeline');
+  document.querySelector('#surprise .lbl').textContent=t('explore');
+  document.querySelector('#satbtn .lbl').textContent=t('sat');
+  document.querySelector('#timetoggle .lbl').textContent=t('timeline');
+  document.querySelector('#legend .l-city').textContent=t('legCity');
+  document.querySelector('#legend .l-place').textContent=t('legPlace');
   document.getElementById('vntoggle').innerHTML=
     '<img class="vnflag" src="https://flagcdn.com/vn.svg" alt="VN">'+t('vnonly');
   document.getElementById('hint').innerHTML='🌍 '+t('hint');
@@ -641,30 +720,96 @@ async function loadArticles(){
 
 /* ---------- article panel via REST summary ---------- */
 const panel=document.getElementById('panel');
+const pLoc=document.getElementById('p-loc'), pNearby=document.getElementById('p-nearby');
+let openSeq=0, articleCoord=null;
+
+// Pulsing marker on the currently-open article — the visual map↔panel link.
+const pulseEl=document.createElement('div'); pulseEl.className='wg-pulse';
+const selMarker=new maplibregl.Marker({element:pulseEl});
+let markerOn=false;
+function setMarker(lon,lat){ selMarker.setLngLat([lon,lat]).addTo(map); markerOn=true; }
+function clearMarker(){ if(markerOn){ selMarker.remove(); markerOn=false; } }
+
+// Web-Mercator fraction (0..1) for plotting on the z0 world tile.
+function mercFrac(lon,lat){
+  const x=(lon+180)/360;
+  const s=Math.sin(Math.max(-85.05,Math.min(85.05,lat))*Math.PI/180);
+  const y=0.5-Math.log((1+s)/(1-s))/(4*Math.PI);
+  return {x,y};
+}
+function showLocator(lon,lat){
+  const {x,y}=mercFrac(lon,lat);
+  pLoc.innerHTML=
+    `<div class="mini" style="background-image:url(https://a.basemaps.cartocdn.com/dark_all/0/0/0.png)">`+
+    `<div class="pin" style="left:${(x*100).toFixed(2)}%;top:${(y*100).toFixed(2)}%"></div></div>`+
+    `<div class="coords">📍 ${lat.toFixed(4)}, ${lon.toFixed(4)}</div>`;
+}
+
+let nearbySeq=0;
+async function loadNearby(lon,lat,selfTitle){
+  const my=++nearbySeq;
+  try{
+    const url=`https://${LANG}.wikipedia.org/w/api.php?action=query&format=json&origin=*`+
+      `&list=geosearch&gsradius=10000&gslimit=12&gscoord=${lat}%7C${lon}`;
+    const j=await(await fetch(url)).json();
+    if(my!==nearbySeq) return;
+    const list=((j.query&&j.query.geosearch)||[]).filter(a=>a.title!==selfTitle).slice(0,7);
+    if(!list.length){ pNearby.innerHTML=''; return; }
+    pNearby.innerHTML=`<h4>${t('nearby')}</h4><div class="chips">`+
+      list.map(a=>`<div class="chip" data-t="${a.title.replace(/"/g,'&quot;')}" `+
+        `data-lon="${a.lon}" data-lat="${a.lat}">${a.title}</div>`).join('')+`</div>`;
+  }catch(e){ if(my===nearbySeq) pNearby.innerHTML=''; }
+}
+pNearby.addEventListener('click',e=>{
+  const c=e.target.closest('.chip'); if(!c) return;
+  openArticle({title:c.dataset.t});   // openArticle re-frames to its coordinates
+});
+
 async function openArticle(props){
+  const my=++openSeq;
   panel.classList.add('open');
   document.body.classList.add('panelopen');
   document.getElementById('p-title').textContent=props.title;
   document.getElementById('p-meta').textContent=t('loading');
   document.getElementById('p-extract').textContent='';
   document.getElementById('hero').style.backgroundImage='none';
+  pLoc.innerHTML=''; pNearby.innerHTML='';
   try{
     const r=await fetch(`https://${LANG}.wikipedia.org/api/rest_v1/page/summary/`+
       encodeURIComponent(props.title));
     const j=await r.json();
+    if(my!==openSeq) return;                 // superseded by a newer open
     document.getElementById('p-title').textContent=j.title||props.title;
     document.getElementById('p-meta').textContent=
       (j.description||t('wikiart'))+' · '+LANG.toUpperCase();
     document.getElementById('p-extract').textContent=j.extract||t('nosum');
     document.getElementById('p-link').href=
       (j.content_urls&&j.content_urls.desktop.page)||
-      `https://${LANG}.wikipedia.org/?curid=${props.pageid}`;
+      `https://${LANG}.wikipedia.org/?curid=${props.pageid||''}`;
     const img=j.thumbnail&&j.thumbnail.source;
     document.getElementById('hero').style.backgroundImage=img?`url(${img})`:'none';
-  }catch(e){ document.getElementById('p-meta').textContent=t('loaderr'); }
+    const co=j.coordinates;
+    if(co && isFinite(co.lon) && isFinite(co.lat)){
+      articleCoord=[co.lon,co.lat];
+      setMarker(co.lon,co.lat);
+      showLocator(co.lon,co.lat);
+      if(innerWidth>760) map.easeTo({center:[co.lon,co.lat],offset:[-220,0],duration:650});
+      loadNearby(co.lon,co.lat,j.title||props.title);
+    } else { articleCoord=null; clearMarker(); }
+  }catch(e){ if(my===openSeq) document.getElementById('p-meta').textContent=t('loaderr'); }
 }
-document.getElementById('close').onclick=()=>{
+function closePanel(){
   panel.classList.remove('open'); document.body.classList.remove('panelopen');
+  clearMarker(); pLoc.innerHTML=''; pNearby.innerHTML=''; openSeq++;
+}
+document.getElementById('close').onclick=closePanel;
+document.getElementById('p-share').onclick=function(){
+  const c=articleCoord||[map.getCenter().lng,map.getCenter().lat];
+  const link=location.origin+location.pathname+
+    `#${Math.max(map.getZoom(),11).toFixed(2)}/${c[1].toFixed(4)}/${c[0].toFixed(4)}/${LANG}`;
+  const ok=()=>{ this.classList.add('done'); setTimeout(()=>this.classList.remove('done'),1400); };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok,ok);
+  else ok();
 };
 
 /* ---------- hover preview tooltip (title + thumbnail) ---------- */
@@ -789,6 +934,7 @@ function setTimeMode(on){
   timeMode=on;
   timetoggle.classList.toggle('on',on);
   timebar.classList.toggle('on',on);
+  document.getElementById('legend').style.opacity=on?0:1;
   setVis(['events-glow','events-point'],on);
   if(on){
     setVis(['cities-clusters','cities-cluster-count','cities-glow','cities-point',
