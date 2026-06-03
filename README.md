@@ -11,6 +11,9 @@
   - *Tầng live* (zoom gần): geosearch Wikipedia thật theo viewport, chấm cyan.
 - **Grid-sampling** — chia khung nhìn thành ô nhỏ rồi gộp, vượt giới hạn diện tích `gsbbox`.
 - **Clustering** — zoom xa gom cụm, zoom gần tách từng bài.
+- **Dòng thời gian** 🕰 — kéo năm (1830 TCN → 2026), globe hiện sự kiện lịch sử tô màu theo thời đại; có nút tự chạy; chia sẻ khoảnh khắc qua URL.
+- **Tìm địa điểm** 🔍 — gõ tên → bay tới (Nominatim).
+- **Deep-link** — vị trí/zoom/ngôn ngữ/năm nằm trong URL hash, chia sẻ đúng cảnh.
 - **Panel bài viết** — ảnh + tóm tắt + link đọc full (REST `page/summary`).
 - **Đa ngôn ngữ** — VI / EN / FR / 日本, đổi tức thì (tầng văn minh rebuild theo ngôn ngữ).
 - **Zero backend, zero build, zero API key** — mở `index.html` là chạy (kể cả `file://`).
@@ -45,7 +48,9 @@ xuất `window.WIKIGLOBE_CITIES`. Nạp qua thẻ `<script src>` nên chạy đ�
 - Tầng văn minh chỉ gồm đô thị; địa danh/di tích chưa có.
 
 ## 🗺️ Roadmap
+Xem [ROADMAP.md](ROADMAP.md) cho checklist đầy đủ theo phase.
 - [x] **Tầng văn minh toàn cầu** (`cities.js` từ Wikidata): globe luôn sáng khi zoom xa.
+- [x] **Deep-link**, **Search box**, **Time slider lịch sử** (`events.js`).
 - [ ] **Cache geo-index → Supabase**: tri thức dày đặc kể cả zoom trung gian, không phụ thuộc giới hạn `gsbbox`.
 - [ ] **Time slider** 🔥: kéo theo năm, sự kiện/nhân vật hiện theo dòng lịch sử.
 - [ ] **Heatmap**: vùng dày tri thức sáng rực — "bản đồ văn minh".

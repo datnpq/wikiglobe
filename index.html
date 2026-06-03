@@ -7,6 +7,7 @@
 <link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet" />
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="cities.js"></script><!-- global "civilization" index (works over file://) -->
+<script src="events.js"></script><!-- dated history index for the time slider -->
 <style>
   :root{
     --bg:#05070f; --panel:rgba(12,16,28,.86); --line:rgba(120,150,220,.18);
@@ -70,6 +71,33 @@
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #results .row.msg{color:var(--muted);cursor:default}
 
+  /* time-mode toggle (top bar) */
+  #timetoggle{all:unset;pointer-events:auto;cursor:pointer;font-size:12.5px;font-weight:600;
+    color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:999px;
+    padding:7px 13px;backdrop-filter:blur(10px);transition:.15s;white-space:nowrap}
+  #timetoggle.on{color:#06121f;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    border-color:transparent}
+
+  /* time slider (bottom) */
+  #timebar{position:absolute;z-index:6;left:50%;bottom:24px;
+    transform:translateX(-50%) translateY(180%);transition:transform .4s cubic-bezier(.4,0,.2,1);
+    display:flex;align-items:center;gap:14px;width:min(720px,94vw);
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 18px;
+    backdrop-filter:blur(14px);box-shadow:0 16px 50px rgba(0,0,0,.5)}
+  #timebar.on{transform:translateX(-50%)}
+  #play{all:unset;cursor:pointer;width:38px;height:38px;flex:none;border-radius:50%;text-align:center;
+    line-height:38px;font-size:14px;color:var(--accent);background:rgba(90,209,255,.14)}
+  #year{flex:1;-webkit-appearance:none;appearance:none;height:5px;border-radius:5px;outline:none;
+    background:linear-gradient(90deg,#ff5a5a,#ff9a3c,#ffd479,#c08bff,#7aa0ff,#5ad1ff)}
+  #year::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+    background:#fff;cursor:pointer;box-shadow:0 0 10px var(--accent),0 0 0 4px rgba(255,255,255,.12)}
+  #year::-moz-range-thumb{width:18px;height:18px;border:none;border-radius:50%;background:#fff;
+    cursor:pointer;box-shadow:0 0 10px var(--accent)}
+  #yearlabel{font-variant-numeric:tabular-nums;font-weight:800;font-size:20px;min-width:104px;
+    text-align:center;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  #ecount{font-size:11px;color:var(--muted);min-width:62px;text-align:right;line-height:1.25}
+
   /* hint */
   #hint{position:absolute;z-index:4;left:50%;bottom:26px;transform:translateX(-50%);
     background:var(--panel);border:1px solid var(--line);border-radius:999px;
@@ -112,6 +140,7 @@
     <div id="results"></div>
   </div>
   <div class="spacer"></div>
+  <button id="timetoggle">🕰 Dòng thời gian</button>
   <div id="count">Đang chờ…</div>
   <div class="pill" id="lang">
     <button data-lang="vi" class="on">VI</button>
@@ -122,6 +151,13 @@
 </div>
 
 <div id="hint">🌍 Chấm vàng = <b>đô thị lớn</b> · xoay & <b>zoom vào</b> để mở mọi bài Wikipedia của vùng</div>
+
+<div id="timebar">
+  <button id="play" title="Tự chạy">▶</button>
+  <input id="year" type="range" min="-1830" max="2026" value="1500" step="1" aria-label="Năm" />
+  <div id="yearlabel">1500</div>
+  <div id="ecount"></div>
+</div>
 
 <aside id="panel">
   <button id="close">×</button>
@@ -138,6 +174,8 @@
 const EMPTY = {type:'FeatureCollection', features:[]};
 let LANG = 'vi';
 let CITIES = [];                 // global "civilization" index from cities.js
+let EVENTS = [];                 // dated history index from events.js
+let timeMode = false;            // time slider active → globe shows history
 // Wikipedia's geosearch gsbbox caps the box by AREA (~0.033 deg² empirically),
 // not by zoom. So the live tier grid-samples the viewport into small cells and
 // merges them. CELL² must stay under that cap; MAX_CELLS bounds parallel requests.
@@ -150,7 +188,9 @@ function readHash(){
   const p = location.hash.slice(1).split('/');
   const z=+p[0], lat=+p[1], lng=+p[2];
   if(!isFinite(z)||!isFinite(lat)||!isFinite(lng)) return null;
-  return {zoom:z, center:[lng,lat], lang:LANGS.includes(p[3])?p[3]:null};
+  let time=null;
+  for(const seg of p.slice(3)) if(/^t-?\d+$/.test(seg)) time=parseInt(seg.slice(1),10);
+  return {zoom:z, center:[lng,lat], lang:LANGS.includes(p[3])?p[3]:null, time};
 }
 const START = readHash();
 if(START && START.lang) LANG = START.lang;
@@ -232,6 +272,31 @@ map.on('load',()=>{
   CITIES=(window.WIKIGLOBE_CITIES&&window.WIKIGLOBE_CITIES.cities)||[];
   refreshGlobalTier();
 
+  /* ----- time tier: dated historical events, colored by era ----- */
+  const YEAR_COLOR=['interpolate',['linear'],['get','year'],
+    -1830,'#ff5a5a', 0,'#ff7a3c', 1000,'#ffd479', 1500,'#c08bff', 1850,'#7aa0ff', 2026,'#5ad1ff'];
+  map.addSource('events',{type:'geojson',data:EMPTY});
+  map.addLayer({id:'events-glow',type:'circle',source:'events',layout:{visibility:'none'},
+    paint:{'circle-color':YEAR_COLOR,'circle-blur':0.7,
+      'circle-radius':['*',['get','glow'],22],
+      'circle-opacity':['*',['get','glow'],0.20]}});
+  map.addLayer({id:'events-point',type:'circle',source:'events',layout:{visibility:'none'},
+    paint:{'circle-color':YEAR_COLOR,
+      'circle-radius':['+',2.5,['*',['get','glow'],5]],
+      'circle-opacity':['+',0.45,['*',['get','glow'],0.55]],
+      'circle-stroke-width':1.2,'circle-stroke-color':'#fff',
+      'circle-stroke-opacity':['*',['get','glow'],0.55]}});
+  EVENTS=(window.WIKIGLOBE_EVENTS&&window.WIKIGLOBE_EVENTS.events)||[];
+  if(window.WIKIGLOBE_EVENTS){
+    yearSlider.min=window.WIKIGLOBE_EVENTS.minYear;
+    yearSlider.max=window.WIKIGLOBE_EVENTS.maxYear;
+  }
+  map.on('click','events-point',(e)=>openArticle(e.features[0].properties));
+  for(const ly of ['events-point']){
+    map.on('mouseenter',ly,()=>map.getCanvas().style.cursor='pointer');
+    map.on('mouseleave',ly,()=>map.getCanvas().style.cursor='');
+  }
+
   map.on('click','cities-clusters',(e)=>{
     const f=map.queryRenderedFeatures(e.point,{layers:['cities-clusters']})[0];
     map.getSource('cities').getClusterExpansionZoom(f.properties.cluster_id).then(z=>{
@@ -258,14 +323,17 @@ map.on('load',()=>{
 
   map.on('moveend',()=>{ updateTiers(); writeHash(); });
   map.on('idle',spinGlobe);   // idle-only spin: never fights a programmatic easeTo
-  syncLangPill(); updateTiers(); writeHash();
+  syncLangPill(); updateTiers();
+  if(START && START.time!=null){ yearSlider.value=START.time; setTimeMode(true); }
+  else writeHash();
 });
 
 /* ---------- shareable URL: write #zoom/lat/lng/lang without history spam ---------- */
 function writeHash(){
   const c=map.getCenter();
-  history.replaceState(null,'',
-    `#${map.getZoom().toFixed(2)}/${c.lat.toFixed(4)}/${c.lng.toFixed(4)}/${LANG}`);
+  let h=`#${map.getZoom().toFixed(2)}/${c.lat.toFixed(4)}/${c.lng.toFixed(4)}/${LANG}`;
+  if(timeMode) h+=`/t${yearSlider.value}`;
+  history.replaceState(null,'',h);
 }
 function syncLangPill(){
   document.querySelectorAll('#lang button').forEach(b=>
@@ -300,7 +368,8 @@ function viewportCells(){
 
 function updateTiers(){
   if(!map.getSource('cities')||!map.getSource('wiki')) return;
-  const global = viewportCells() > MAX_CELLS;   // viewport too big for live grid
+  if(timeMode) return;                           // time mode owns the layers
+  const global = viewportCells() > MAX_CELLS;    // viewport too big for live grid
   setVis(['cities-clusters','cities-cluster-count','cities-glow','cities-point'], global);
   setVis(['clusters','cluster-count','point-glow','point'], !global);
   const hint=document.getElementById('hint'), count=document.getElementById('count');
@@ -401,8 +470,67 @@ document.getElementById('lang').addEventListener('click',e=>{
   const btn=e.target.closest('button'); if(!btn) return;
   LANG=btn.dataset.lang;
   [...e.currentTarget.children].forEach(b=>b.classList.toggle('on',b===btn));
-  refreshGlobalTier(); updateTiers(); writeHash();
+  refreshGlobalTier(); updateTiers(); if(timeMode) refreshEvents(); writeHash();
 });
+
+/* ---------- time slider: dated history through the ages ---------- */
+const timetoggle=document.getElementById('timetoggle');
+const timebar=document.getElementById('timebar');
+const yearSlider=document.getElementById('year');
+const yearLabel=document.getElementById('yearlabel');
+const ecount=document.getElementById('ecount');
+const playBtn=document.getElementById('play');
+const EVENT_WINDOW=25;            // ± years shown around the selected year
+let playTimer=0;
+
+function fmtYear(y){ return y<0 ? (-y)+' TCN' : ''+y; }
+
+function refreshEvents(){
+  if(!map.getSource('events')) return;
+  const year=+yearSlider.value, W=EVENT_WINDOW, feats=[];
+  for(const ev of EVENTS){
+    const dy=Math.abs(ev[2]-year); if(dy>W) continue;
+    const title=ev[3][LANG]; if(!title) continue;
+    feats.push({type:'Feature',geometry:{type:'Point',coordinates:[ev[0],ev[1]]},
+      properties:{title,year:ev[2],glow:+(1-dy/W).toFixed(3)}});
+  }
+  map.getSource('events').setData({type:'FeatureCollection',features:feats});
+  yearLabel.textContent=fmtYear(year);
+  ecount.textContent=feats.length+' sự kiện';
+  writeHash();
+}
+
+function stopPlay(){ if(playTimer){ clearInterval(playTimer); playTimer=0; playBtn.textContent='▶'; } }
+function startPlay(){
+  playBtn.textContent='⏸';
+  playTimer=setInterval(()=>{
+    let y=+yearSlider.value+6;
+    if(y>+yearSlider.max) y=+yearSlider.min;   // loop back to the start of time
+    yearSlider.value=y; refreshEvents();
+  },110);
+}
+
+function setTimeMode(on){
+  timeMode=on;
+  timetoggle.classList.toggle('on',on);
+  timebar.classList.toggle('on',on);
+  setVis(['events-glow','events-point'],on);
+  if(on){
+    setVis(['cities-clusters','cities-cluster-count','cities-glow','cities-point',
+            'clusters','cluster-count','point-glow','point'],false);
+    document.getElementById('hint').style.opacity=0;
+    document.getElementById('count').textContent='Dòng thời gian · '+EVENTS.length+' mốc lịch sử';
+    refreshEvents();
+  }else{
+    stopPlay();
+    map.getSource('events').setData(EMPTY);
+    updateTiers(); writeHash();
+  }
+}
+
+timetoggle.onclick=()=>setTimeMode(!timeMode);
+playBtn.onclick=()=> playTimer? stopPlay() : startPlay();
+yearSlider.addEventListener('input',()=>{ stopPlay(); refreshEvents(); });
 
 /* ---------- place search (Nominatim geocoder) ---------- */
 const qInput=document.getElementById('q');
