@@ -72,11 +72,37 @@
   #results .row.msg{color:var(--muted);cursor:default}
 
   /* time-mode toggle (top bar) */
-  #timetoggle{all:unset;pointer-events:auto;cursor:pointer;font-size:12.5px;font-weight:600;
+  #timetoggle,#satbtn{all:unset;pointer-events:auto;cursor:pointer;font-size:12.5px;font-weight:600;
     color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:999px;
     padding:7px 13px;backdrop-filter:blur(10px);transition:.15s;white-space:nowrap}
-  #timetoggle.on{color:#06121f;background:linear-gradient(135deg,var(--accent),var(--accent2));
-    border-color:transparent}
+  #timetoggle.on,#satbtn.on{color:#06121f;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent}
+
+  /* onboarding: pick a country */
+  #onboard{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:22px;padding:24px;text-align:center;
+    background:radial-gradient(circle at 50% 30%,rgba(10,20,48,.82),rgba(5,7,15,.94));
+    backdrop-filter:blur(8px);transition:opacity .5s}
+  #onboard.hide{opacity:0;pointer-events:none}
+  #onboard h2{margin:0;font-size:clamp(22px,4vw,34px);font-weight:800;letter-spacing:.3px}
+  #onboard h2 .g{background:linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  #onboard p{margin:0;color:var(--muted);font-size:14px;max-width:440px;line-height:1.5}
+  #countries{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;
+    width:min(720px,92vw);max-height:46vh;overflow:auto;padding:4px}
+  #countries button{all:unset;cursor:pointer;display:flex;align-items:center;gap:9px;
+    padding:11px 13px;border-radius:12px;background:var(--panel);border:1px solid var(--line);
+    font-size:13.5px;font-weight:600;color:var(--txt);transition:.15s}
+  #countries button:hover{border-color:var(--accent);transform:translateY(-2px);
+    box-shadow:0 8px 24px rgba(90,209,255,.18)}
+  #countries button .flag{font-size:20px;line-height:1}
+  #skip{all:unset;cursor:pointer;color:var(--muted);font-size:13px;text-decoration:underline;
+    text-underline-offset:3px}
+  #skip:hover{color:var(--accent)}
+  /* reopen-onboard button (bottom-left, above attribution) */
+  #globe-btn{position:absolute;z-index:5;left:14px;bottom:54px;all:unset;cursor:pointer;
+    width:40px;height:40px;border-radius:50%;text-align:center;line-height:40px;font-size:17px;
+    background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(10px)}
 
   /* time slider (bottom) */
   #timebar{position:absolute;z-index:6;left:50%;bottom:24px;
@@ -131,6 +157,15 @@
 <body>
 <div id="map"></div>
 
+<button id="globe-btn" title="Chọn quốc gia">🌐</button>
+
+<div id="onboard" class="hide">
+  <h2>Bắt đầu hành trình từ <span class="g">đâu?</span></h2>
+  <p>Chọn một quốc gia — quả địa cầu sẽ bay tới và xoay quanh nơi đó. Hoặc khám phá tự do.</p>
+  <div id="countries"></div>
+  <button id="skip">Khám phá tự do →</button>
+</div>
+
 <div id="bar">
   <div id="brand"><span class="dot"></span>WikiGlobe<small>tri thức theo địa lý</small></div>
   <div id="search">
@@ -140,6 +175,7 @@
     <div id="results"></div>
   </div>
   <div class="spacer"></div>
+  <button id="satbtn">🛰 Vệ tinh</button>
   <button id="timetoggle">🕰 Dòng thời gian</button>
   <div id="count">Đang chờ…</div>
   <div class="pill" id="lang">
@@ -206,11 +242,14 @@ const map = new maplibregl.Map({
           'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
           'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
           'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-          'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png']}
+          'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png']},
+      esri:{type:'raster',tileSize:256,attribution:'© Esri, Maxar, Earthstar Geographics',
+        tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}']}
     },
     layers:[
       {id:'space',type:'background',paint:{'background-color':'#05070f'}},
-      {id:'carto',type:'raster',source:'carto'}
+      {id:'carto',type:'raster',source:'carto'},
+      {id:'satellite',type:'raster',source:'esri',layout:{visibility:'none'}}
     ]
   },
   center:START? START.center : [108.2,14.0],
@@ -300,7 +339,7 @@ map.on('load',()=>{
   map.on('click','cities-clusters',(e)=>{
     const f=map.queryRenderedFeatures(e.point,{layers:['cities-clusters']})[0];
     map.getSource('cities').getClusterExpansionZoom(f.properties.cluster_id).then(z=>{
-      map.easeTo({center:f.geometry.coordinates,zoom:z+0.4,duration:700});
+      cinematic(f.geometry.coordinates, z+0.4, 30);
     });
   });
   map.on('click','cities-point',(e)=>openArticle(e.features[0].properties));
@@ -312,7 +351,7 @@ map.on('load',()=>{
   map.on('click','clusters',(e)=>{
     const f=map.queryRenderedFeatures(e.point,{layers:['clusters']})[0];
     map.getSource('wiki').getClusterExpansionZoom(f.properties.cluster_id).then(z=>{
-      map.easeTo({center:f.geometry.coordinates,zoom:z+0.4,duration:700});
+      cinematic(f.geometry.coordinates, z+0.4, 30);
     });
   });
   map.on('click','point',(e)=>openArticle(e.features[0].properties));
@@ -322,10 +361,11 @@ map.on('load',()=>{
   }
 
   map.on('moveend',()=>{ updateTiers(); writeHash(); });
-  map.on('idle',spinGlobe);   // idle-only spin: never fights a programmatic easeTo
+  map.on('idle',tickIdle);    // idle-only motion: free spin, or orbit a chosen country
   syncLangPill(); updateTiers();
   if(START && START.time!=null){ yearSlider.value=START.time; setTimeMode(true); }
   else writeHash();
+  initOnboard();
 });
 
 /* ---------- shareable URL: write #zoom/lat/lng/lang without history spam ---------- */
@@ -395,8 +435,23 @@ function spinGlobe(){
   const c=map.getCenter(); c.lng -= 360/SECONDS_PER_REV;
   map.easeTo({center:c,duration:1000,easing:n=>n});
 }
+/* cinematic orbit: keep a chosen country centred and slowly rotate the camera */
+let orbitOn=false;
+function orbitStep(){
+  if(!orbitOn || userInteracting || map.isMoving()) return;
+  map.easeTo({bearing:map.getBearing()+9,duration:1100,easing:n=>n});
+}
+function tickIdle(){ if(orbitOn) orbitStep(); else spinGlobe(); }
+function exitOrbit(){ orbitOn=false; }   // user takes the wheel → stop orbiting
+
+/* cinematic camera move — long eased flight with a dramatic tilt */
+function cinematic(center, zoom, pitch, then){
+  if(then) map.once('moveend',then);
+  map.flyTo({center, zoom, pitch:pitch||0, bearing:0, duration:2600, curve:1.5, essential:true});
+}
+
 ['mousedown','touchstart','wheel'].forEach(ev=>
-  map.on(ev,()=>{userInteracting=true}));
+  map.on(ev,()=>{userInteracting=true; exitOrbit();}));
 ['mouseup','touchend','dragend'].forEach(ev=>
   map.on(ev,()=>{userInteracting=false;}));   // 'idle' resumes the spin on its own
 
@@ -594,6 +649,62 @@ resBox.addEventListener('mousedown',e=>{               // mousedown beats input 
 });
 qInput.addEventListener('focus',()=>{ searchEl.classList.add('focus'); });
 qInput.addEventListener('blur',()=>{ searchEl.classList.remove('focus'); setTimeout(clearResults,120); });
+
+/* ---------- satellite imagery toggle ---------- */
+const satbtn=document.getElementById('satbtn');
+let satOn=false;
+satbtn.onclick=()=>{
+  satOn=!satOn;
+  satbtn.classList.toggle('on',satOn);
+  map.setLayoutProperty('satellite','visibility',satOn?'visible':'none');
+  map.setLayoutProperty('carto','visibility',satOn?'none':'visible');
+};
+
+/* ---------- onboarding: pick a country → cinematic fly-in + orbit ---------- */
+const COUNTRIES=[
+  {f:'🇻🇳',n:'Việt Nam',center:[106.0,16.2],z:4.8},
+  {f:'🇯🇵',n:'Nhật Bản',center:[138.2,37.5],z:4.3},
+  {f:'🇫🇷',n:'Pháp',center:[2.4,46.6],z:4.8},
+  {f:'🇮🇹',n:'Ý',center:[12.5,42.6],z:4.8},
+  {f:'🇬🇧',n:'Anh',center:[-2.0,54.0],z:4.6},
+  {f:'🇪🇸',n:'Tây Ban Nha',center:[-3.7,40.2],z:4.8},
+  {f:'🇬🇷',n:'Hy Lạp',center:[22.5,39.0],z:5.0},
+  {f:'🇪🇬',n:'Ai Cập',center:[30.0,26.5],z:4.6},
+  {f:'🇹🇷',n:'Thổ Nhĩ Kỳ',center:[35.0,39.0],z:4.6},
+  {f:'🇨🇳',n:'Trung Quốc',center:[104.0,35.0],z:3.4},
+  {f:'🇮🇳',n:'Ấn Độ',center:[79.0,22.0],z:3.8},
+  {f:'🇰🇷',n:'Hàn Quốc',center:[127.8,36.3],z:5.5},
+  {f:'🇹🇭',n:'Thái Lan',center:[101.0,15.0],z:4.7},
+  {f:'🇮🇩',n:'Indonesia',center:[118.0,-2.0],z:3.6},
+  {f:'🇺🇸',n:'Hoa Kỳ',center:[-98.0,39.0],z:3.2},
+  {f:'🇲🇽',n:'Mexico',center:[-102.0,23.5],z:3.8},
+  {f:'🇧🇷',n:'Brazil',center:[-51.0,-10.0],z:3.2},
+  {f:'🇵🇪',n:'Peru',center:[-75.0,-9.5],z:4.2},
+  {f:'🇷🇺',n:'Nga',center:[90.0,62.0],z:2.5},
+  {f:'🇩🇪',n:'Đức',center:[10.4,51.2],z:4.8},
+  {f:'🇸🇪',n:'Thụy Điển',center:[16.0,63.0],z:3.8},
+  {f:'🇦🇺',n:'Úc',center:[134.0,-25.0],z:3.4},
+  {f:'🇿🇦',n:'Nam Phi',center:[25.0,-29.0],z:4.2},
+  {f:'🇲🇦',n:'Maroc',center:[-7.0,31.8],z:4.7},
+];
+const onboard=document.getElementById('onboard');
+function openOnboard(){ onboard.classList.remove('hide'); }
+function closeOnboard(){ onboard.classList.add('hide'); }
+function flyToCountry(ct){
+  closeOnboard(); exitOrbit();
+  cinematic(ct.center, ct.z, 45, ()=>{ if(!userInteracting) orbitOn=true; });
+}
+function initOnboard(){
+  document.getElementById('countries').innerHTML=COUNTRIES.map((c,i)=>
+    `<button data-i="${i}"><span class="flag">${c.f}</span>${c.n}</button>`).join('');
+  document.getElementById('countries').addEventListener('click',e=>{
+    const b=e.target.closest('button[data-i]'); if(!b) return;
+    flyToCountry(COUNTRIES[+b.dataset.i]);
+  });
+  document.getElementById('skip').onclick=closeOnboard;
+  document.getElementById('globe-btn').onclick=openOnboard;
+  if(!START) setTimeout(openOnboard,350);   // shared deep-links skip onboarding
+}
 </script>
 </body>
 </html>

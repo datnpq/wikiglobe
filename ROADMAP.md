@@ -25,6 +25,7 @@ Mục tiêu: từ "demo đẹp" → "công cụ dùng được mỗi ngày".
 - [x] 🔥 **Deep-link & URL state** ⏱️S — hash `#zoom/lat/lng/lang`, khôi phục camera + ngôn ngữ khi mở; chia sẻ đúng cảnh. *(xong)*
 - [x] 🔥 **Search box** ⏱️M — gõ tên địa điểm → Nominatim → bay tới (fitBounds); autocomplete, phím ↑↓/Enter/Esc. *(xong)*
 - [x] 🔥 **Time slider lịch sử** ⏱️L — `events.js` (8.8k sự kiện có `P585`+`P625` từ Wikidata, 1830 TCN→2026); kéo năm → globe hiện sự kiện trong cửa sổ ±25y, tô màu theo thời đại, glow theo độ gần; play tự chạy; chia sẻ khoảnh khắc qua hash `/t<năm>`. *(xong)*
+- [x] 🔥 **Onboarding chọn quốc gia + orbit + vệ tinh** ⏱️M — màn mở chọn nước → bay cinematic (pitch 45°) & xoay quanh; nút 🛰 bật ảnh vệ tinh Esri; click cụm bay kiểu điện ảnh. *(xong)*
 - [ ] ⭐ **Hover preview** ⏱️S — rê chuột vào chấm hiện tooltip tên + ảnh nhỏ (prefetch summary).
 - [ ] ⭐ **Sửa panel che nút ngôn ngữ** ⏱️S — trên desktop panel phải đè pill ngôn ngữ; dời pill/đẩy layout khi panel mở.
 - [ ] ⭐ **i18n UI chrome** ⏱️M — hiện chữ giao diện chỉ tiếng Việt; tách chuỗi theo `LANG`.
