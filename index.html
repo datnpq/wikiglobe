@@ -117,6 +117,17 @@ let CITIES = [];                 // global "civilization" index from cities.js
 const CELL = 0.16;               // degrees per grid cell side (0.16² ≈ 0.026 deg²)
 const MAX_CELLS = 28;            // above this the viewport is too big → global tier
 
+/* ---------- shareable URL state: #zoom/lat/lng/lang ---------- */
+const LANGS = ['vi','en','fr','ja'];
+function readHash(){
+  const p = location.hash.slice(1).split('/');
+  const z=+p[0], lat=+p[1], lng=+p[2];
+  if(!isFinite(z)||!isFinite(lat)||!isFinite(lng)) return null;
+  return {zoom:z, center:[lng,lat], lang:LANGS.includes(p[3])?p[3]:null};
+}
+const START = readHash();
+if(START && START.lang) LANG = START.lang;
+
 const map = new maplibregl.Map({
   container:'map',
   style:{
@@ -135,7 +146,9 @@ const map = new maplibregl.Map({
       {id:'carto',type:'raster',source:'carto'}
     ]
   },
-  center:[108.2,14.0], zoom:2.2, attributionControl:false,
+  center:START? START.center : [108.2,14.0],
+  zoom:START? START.zoom : 2.2,
+  attributionControl:false,
   canvasContextAttributes:{antialias:true}
 });
 window.map = map;   // expose for console debugging
@@ -216,10 +229,21 @@ map.on('load',()=>{
     map.on('mouseleave',ly,()=>map.getCanvas().style.cursor='');
   }
 
-  map.on('moveend',updateTiers);
+  map.on('moveend',()=>{ updateTiers(); writeHash(); });
   map.on('idle',spinGlobe);   // idle-only spin: never fights a programmatic easeTo
-  updateTiers();
+  syncLangPill(); updateTiers(); writeHash();
 });
+
+/* ---------- shareable URL: write #zoom/lat/lng/lang without history spam ---------- */
+function writeHash(){
+  const c=map.getCenter();
+  history.replaceState(null,'',
+    `#${map.getZoom().toFixed(2)}/${c.lat.toFixed(4)}/${c.lng.toFixed(4)}/${LANG}`);
+}
+function syncLangPill(){
+  document.querySelectorAll('#lang button').forEach(b=>
+    b.classList.toggle('on', b.dataset.lang===LANG));
+}
 
 /* ---------- tier orchestration: global cities vs live geosearch ---------- */
 const setVis=(ids,on)=>ids.forEach(id=>
@@ -350,7 +374,7 @@ document.getElementById('lang').addEventListener('click',e=>{
   const btn=e.target.closest('button'); if(!btn) return;
   LANG=btn.dataset.lang;
   [...e.currentTarget.children].forEach(b=>b.classList.toggle('on',b===btn));
-  refreshGlobalTier(); updateTiers();
+  refreshGlobalTier(); updateTiers(); writeHash();
 });
 </script>
 </body>
