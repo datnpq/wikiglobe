@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>WikiGlobe XR — Tri thức trong không gian</title>
+<!-- data layers (renderer-agnostic JSON) — same files the 2D app uses -->
+<script defer src="cities.js"></script>
+<script defer src="places.js"></script>
+<script defer src="people.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0b0a08;--panel:rgba(247,245,238,.96);--txt:#2b2925;--muted:#75716a;--accent:#cc785c;
+    --serif:"Newsreader",Georgia,serif}
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:#f3efe4;overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+  #info{position:fixed;z-index:5;top:18px;left:20px;pointer-events:none;text-shadow:0 1px 10px #000a}
+  #info h1{margin:0;font-family:var(--serif);font-weight:600;font-size:22px;letter-spacing:.2px}
+  #info h1 b{background:linear-gradient(135deg,var(--accent),#b3543a);-webkit-background-clip:text;
+    background-clip:text;color:transparent}
+  #info p{margin:5px 0 0;font-size:12.5px;color:rgba(243,239,228,.7);max-width:320px;line-height:1.5}
+  #legend{position:fixed;z-index:5;left:20px;bottom:18px;display:flex;flex-wrap:wrap;gap:5px 12px;
+    max-width:60vw;pointer-events:none;text-shadow:0 1px 8px #000a}
+  #legend span{display:flex;align-items:center;gap:5px;font-size:11.5px;color:rgba(243,239,228,.82)}
+  #legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+  /* three.js injects the VR button; style it on-brand */
+  #VRButton{font-family:inherit!important}
+  #loading{position:fixed;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;
+    background:var(--bg);font-family:var(--serif);font-size:20px;color:#f3efe4;transition:opacity .6s}
+  #loading.gone{opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="loading">Đang dựng vũ trụ tri thức…</div>
+<div id="info">
+  <h1><b>WikiGlobe</b> XR</h1>
+  <p>Chĩa & bấm cò để mở một điểm tri thức. Đeo kính → bấm <b>Enter VR</b>. Trên máy tính → kéo chuột để xoay, lăn để zoom, bấm vào chấm.</p>
+</div>
+<div id="legend">
+  <span><i style="background:#ffd479"></i>Đô thị</span>
+  <span><i style="background:#cc785c"></i>Lịch sử</span>
+  <span><i style="background:#b98bdb"></i>Văn hóa</span>
+  <span><i style="background:#6fb98f"></i>Thiên nhiên</span>
+  <span><i style="background:#5aa9d6"></i>Khoa học</span>
+  <span><i style="background:#e98aa6"></i>Nhân vật</span>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const THEME_COLOR = { city:0xffd479, h:0xcc785c, c:0xb98bdb, n:0x6fb98f, s:0x5aa9d6, p:0xe98aa6 };
+const R = 0.95;                                   // globe radius (metres)
+const CENTER = new THREE.Vector3(0, 1.4, -2.0);   // floats at face height in VR
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+renderer.xr.enabled = true;
+document.body.appendChild(renderer.domElement);
+document.body.appendChild(VRButton.createButton(renderer));
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0a08);
+
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.05, 100);
+camera.position.set(CENTER.x, CENTER.y, CENTER.z + 2.7);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(CENTER);
+controls.enableDamping = true; controls.minDistance = 1.3; controls.maxDistance = 6;
+controls.update();
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const sun = new THREE.DirectionalLight(0xfff0e0, 1.1);
+sun.position.set(3, 2, 2); scene.add(sun);
+
+// starfield
+{
+  const N = 1500, pos = new Float32Array(N*3);
+  for (let i=0;i<N;i++){ const r=20+Math.random()*40, u=Math.random()*2-1, a=Math.random()*Math.PI*2,
+    s=Math.sqrt(1-u*u); pos[i*3]=r*s*Math.cos(a); pos[i*3+1]=r*u; pos[i*3+2]=r*s*Math.sin(a); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color:0xfff3e0, size:0.06, sizeAttenuation:true })));
+}
+
+// globe group (rotates slowly; points are children so they spin with it)
+const globe = new THREE.Group();
+globe.position.copy(CENTER);
+scene.add(globe);
+
+const tex = new THREE.TextureLoader();
+tex.setCrossOrigin('anonymous');
+const earth = new THREE.Mesh(
+  new THREE.SphereGeometry(R, 64, 48),
+  new THREE.MeshStandardMaterial({
+    map: tex.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg'),
+    color: 0x8a8a86, roughness: 1, metalness: 0 })   // dimmed for a moody backdrop
+);
+globe.add(earth);
+// faint atmosphere halo
+globe.add(new THREE.Mesh(new THREE.SphereGeometry(R*1.035, 48, 32),
+  new THREE.MeshBasicMaterial({ color:0x5a86c0, transparent:true, opacity:0.06, side:THREE.BackSide })));
+
+function latLonToVec3(lat, lon, radius){
+  const phi = (90 - lat) * Math.PI/180, theta = (lon + 180) * Math.PI/180;
+  return new THREE.Vector3(
+    -radius * Math.sin(phi) * Math.cos(theta),
+     radius * Math.cos(phi),
+     radius * Math.sin(phi) * Math.sin(theta));
+}
+
+// round soft sprite for glowing points
+function discTexture(){
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d'); const g = x.createRadialGradient(32,32,0,32,32,32);
+  g.addColorStop(0,'#fff'); g.addColorStop(.35,'#fff'); g.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle = g; x.beginPath(); x.arc(32,32,32,0,7); x.fill();
+  return new THREE.CanvasTexture(c);
+}
+
+const META = [];   // parallel to point index → {title, lang, theme}
+function pickTitle(t){ for (const l of ['vi','en','fr','ja']) if (t[l]) return { title:t[l], lang:l }; return null; }
+
+function buildPoints(){
+  const items = [];
+  const W = window;
+  const add = (arr, fixed) => { if(!arr) return; for (const c of arr){
+    const p = pickTitle(c[3]); if(!p) continue;
+    items.push({ lon:c[0], lat:c[1], theme: fixed || c[4] || 'h', title:p.title, lang:p.lang }); } };
+  add((W.WIKIGLOBE_CITIES||{}).cities, 'city');
+  add((W.WIKIGLOBE_PLACES||{}).places, null);
+  add((W.WIKIGLOBE_PEOPLE||{}).people, 'p');
+
+  const pos = new Float32Array(items.length*3), col = new Float32Array(items.length*3);
+  const tmp = new THREE.Color();
+  items.forEach((it,i) => {
+    const v = latLonToVec3(it.lat, it.lon, R*1.008);
+    pos[i*3]=v.x; pos[i*3+1]=v.y; pos[i*3+2]=v.z;
+    tmp.setHex(THEME_COLOR[it.theme]||0xffd479);
+    col[i*3]=tmp.r; col[i*3+1]=tmp.g; col[i*3+2]=tmp.b;
+    META.push(it);
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color', new THREE.BufferAttribute(col,3));
+  const m = new THREE.PointsMaterial({ size:0.022, map:discTexture(), vertexColors:true,
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, sizeAttenuation:true });
+  const points = new THREE.Points(g, m);
+  globe.add(points);
+  return points;
+}
+
+// selection marker (pulses)
+const marker = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 16),
+  new THREE.MeshBasicMaterial({ color:0xffffff }));
+marker.visible = false; globe.add(marker);
+
+// floating info panel (CanvasTexture, billboards to viewer)
+const PCAN = document.createElement('canvas'); PCAN.width = 640; PCAN.height = 420;
+const PCTX = PCAN.getContext('2d');
+const panelTex = new THREE.CanvasTexture(PCAN);
+const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.62),
+  new THREE.MeshBasicMaterial({ map:panelTex, transparent:true }));
+panel.position.set(CENTER.x + 1.35, CENTER.y + 0.15, CENTER.z);
+panel.visible = false; scene.add(panel);
+
+function wrap(ctx, text, x, y, maxW, lh, maxLines){
+  const words = (text||'').split(/\s+/); let line = '', n = 0;
+  for (const w of words){
+    if (ctx.measureText(line+w+' ').width > maxW && line){
+      ctx.fillText(line, x, y); line = w+' '; y += lh; if(++n >= maxLines){ ctx.fillText('…', x, y); return; }
+    } else line += w+' ';
+  }
+  ctx.fillText(line, x, y);
+}
+function drawPanel(title, body, meta){
+  PCTX.clearRect(0,0,640,420);
+  PCTX.fillStyle = 'rgba(247,245,238,0.97)';
+  roundRect(PCTX, 8, 8, 624, 404, 28); PCTX.fill();
+  PCTX.fillStyle = '#cc785c'; PCTX.font = '600 22px Georgia, serif';
+  PCTX.fillText((meta||'WIKIGLOBE').toUpperCase().slice(0,46), 36, 60);
+  PCTX.fillStyle = '#2b2925'; PCTX.font = '600 34px Georgia, serif';
+  wrap(PCTX, title, 36, 104, 568, 40, 2);
+  PCTX.fillStyle = '#4a4641'; PCTX.font = '22px -apple-system, system-ui, sans-serif';
+  wrap(PCTX, body, 36, 196, 572, 30, 7);
+  panelTex.needsUpdate = true;
+}
+function roundRect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r);
+  c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+
+let openSeq = 0;
+async function open(meta){
+  panel.visible = true;
+  drawPanel(meta.title, 'Đang tải…', meta.lang.toUpperCase());
+  const my = ++openSeq;
+  try{
+    const r = await fetch(`https://${meta.lang}.wikipedia.org/api/rest_v1/page/summary/`+
+      encodeURIComponent(meta.title));
+    const j = await r.json(); if (my !== openSeq) return;
+    drawPanel(j.title || meta.title, j.extract || '(Không có tóm tắt)',
+      (j.description || 'Wikipedia') + ' · ' + meta.lang.toUpperCase());
+  }catch(e){ if (my===openSeq) drawPanel(meta.title, 'Không tải được nội dung.', meta.lang.toUpperCase()); }
+}
+
+// ---- picking (shared by mouse + controllers) ----
+const ray = new THREE.Raycaster();
+ray.params.Points.threshold = 0.03;
+let POINTS = null;
+function pickFrom(origin, dir){
+  if (!POINTS) return;
+  ray.set(origin, dir);
+  const hit = ray.intersectObject(POINTS, false)[0];
+  if (!hit) return;
+  const m = META[hit.index]; if (!m) return;
+  const v = new THREE.Vector3().fromBufferAttribute(POINTS.geometry.attributes.position, hit.index);
+  marker.position.copy(v); marker.visible = true;
+  open(m);
+}
+
+// desktop click
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (renderer.xr.isPresenting) return;
+  const ndc = new THREE.Vector2((e.clientX/innerWidth)*2-1, -(e.clientY/innerHeight)*2+1);
+  ray.params.Points.threshold = 0.03;
+  ray.setFromCamera(ndc, camera);
+  const hit = POINTS && ray.intersectObject(POINTS, false)[0];
+  if (hit){ const v = new THREE.Vector3().fromBufferAttribute(POINTS.geometry.attributes.position, hit.index);
+    marker.position.copy(v); marker.visible = true; open(META[hit.index]); }
+});
+
+// VR controllers
+const tmpM = new THREE.Matrix4(), org = new THREE.Vector3(), dir = new THREE.Vector3();
+for (const i of [0,1]){
+  const ctrl = renderer.xr.getController(i);
+  const line = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,-5)]),
+    new THREE.LineBasicMaterial({ color:0xcc785c, transparent:true, opacity:0.7 }));
+  ctrl.add(line);
+  ctrl.addEventListener('selectstart', () => {
+    tmpM.identity().extractRotation(ctrl.matrixWorld);
+    org.setFromMatrixPosition(ctrl.matrixWorld);
+    dir.set(0,0,-1).applyMatrix4(tmpM).normalize();
+    pickFrom(org, dir);
+  });
+  scene.add(ctrl);
+}
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let started = false;
+function start(){
+  if (started) return; started = true;
+  POINTS = buildPoints();
+  document.getElementById('loading').classList.add('gone');
+  window.__xr = { meta: META.length,
+    pick: (lon,lat) => { const v = latLonToVec3(lat,lon,R*1.008).applyMatrix4(globe.matrixWorld);
+      const m = META.find(x=>x.lon===lon&&x.lat===lat); if(m) open(m); return m&&m.title; } };
+}
+
+const camWorld = new THREE.Vector3();
+let t = 0;
+renderer.setAnimationLoop(() => {
+  t += 0.005;
+  globe.rotation.y += 0.0009;              // gentle spin
+  if (marker.visible) marker.scale.setScalar(1 + Math.sin(t*6)*0.25);
+  if (panel.visible){                       // billboard to viewer
+    (renderer.xr.isPresenting ? renderer.xr.getCamera() : camera).getWorldPosition(camWorld);
+    panel.lookAt(camWorld);
+  }
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+// data scripts are `defer`, so they've run by now; if not, wait a tick
+if (window.WIKIGLOBE_CITIES) start();
+else addEventListener('DOMContentLoaded', start);
+setTimeout(start, 1200);   // safety
+</script>
+</body>
+</html>

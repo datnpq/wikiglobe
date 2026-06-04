@@ -15,6 +15,7 @@
 - **Tìm địa điểm** 🔍 — gõ tên → bay tới (Nominatim).
 - **Deep-link** — vị trí/zoom/ngôn ngữ/năm nằm trong URL hash, chia sẻ đúng cảnh.
 - **Panel bài viết** — ảnh + tóm tắt + link đọc full (REST `page/summary`).
+- **🥽 WikiGlobe XR** (`xr.html`) — bản WebXR (three.js): mở bằng trình duyệt **Meta Quest 3 / Pico** → bấm *Enter VR* → đứng giữa quả cầu tri thức, chĩa controller chọn điểm để đọc. Desktop: kéo chuột xoay, click chấm. Dùng lại đúng các file dữ liệu tĩnh.
 - **Đa ngôn ngữ** — VI / EN / FR / 日本, đổi tức thì (tầng văn minh rebuild theo ngôn ngữ).
 - **Zero backend, zero build, zero API key** — mở `index.html` là chạy (kể cả `file://`).
 
