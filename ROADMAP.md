@@ -42,7 +42,8 @@ Mục tiêu: lấp **gap zoom trung gian** (z6–10 hiện chỉ có đô thị)
 
 - [x] 🔥 **Geo-index tĩnh (zero-backend)** ⏱️L — `places.js`: 35k địa danh nổi bật (di sản, danh thắng, núi/hồ, công trình…) lọc theo `wikibase:sitelinks`, trộn vào tầng toàn cầu → **lấp dày z6–10**. Thành phố vàng, danh thắng coral. *(xong)*
 - [ ] 💤 **Nâng lên Supabase/D1** ⏱️L — nếu cần full coverage (mọi bài, không chỉ nổi bật) + lazy-load theo tile, không phụ thuộc `gsbbox`.
-- [ ] ⭐ **Heatmap mật độ** ⏱️M — vùng dày tri thức sáng rực = "bản đồ văn minh".
+- [x] ⭐ **Heatmap mật độ** ⏱️M — nút 🔥: ~39k điểm (cities+places+people) gộp thành dải nhiệt coral→vàng→trắng = "bản đồ văn minh"; legend vẫn lọc được; fade vào tầng live khi zoom sâu. *(xong)*
+- [x] 🔥 **⚡ Lớp trạm sạc EV — vertical mới** ⏱️L — nút ⚡: trạm sạc xe điện từ OpenStreetMap/Overpass theo viewport, cụm xanh lá, panel chi tiết (cổng Type 2/CCS/CHAdeMO, công suất kW, phí, ngày cập nhật, nút Chỉ đường). GET `?data=` + 3 mirror fallback né lỗi 406. **Hướng "lụm tiền toàn cục":** bản OSM để prove UX; moat thật = realtime availability + giá + booking qua partnership/API trả phí (sân B2B REALITECH). *(xong — MVP)*
 - [ ] ⭐ **Mở rộng tầng toàn cầu** ⏱️M — không chỉ đô thị: di sản UNESCO, núi, danh thắng, sân bay… (thêm `P31` vào `build-cities.mjs`).
 - [x] ⭐ **Đào sâu Việt Nam** ⏱️M — `vn-events.js` (22 sự kiện sử Việt verified) + toggle "🇻🇳 chỉ VN" lọc sự kiện theo vùng & khung VN. *(xong)*
 - [x] 🔥 **Phân lớp theo chủ đề** ⏱️L — mỗi điểm gắn lĩnh vực (Đô thị / Lịch sử / Văn hóa / Thiên nhiên / Khoa học) phân loại qua kiểu Wikidata; tô màu riêng; **legend = bộ lọc** bật/tắt từng lăng kính. Globe thành bản đồ tri thức đa lĩnh vực. *(xong)*
@@ -54,7 +55,7 @@ Mục tiêu: lấp **gap zoom trung gian** (z6–10 hiện chỉ có đô thị)
 Mục tiêu: giữ chân người dùng và lan toả.
 
 - [x] ⭐ **"✨ Khám phá ngẫu nhiên"** ⏱️S — bay cinematic tới một địa danh nổi bật bất kỳ (bias theo notability) & mở bài luôn. *(xong)*
-- [ ] ⭐ **Địa điểm nổi bật trong ngày** ⏱️M — featured location, tạo lý do quay lại.
+- [x] ⭐ **Địa điểm nổi bật trong ngày** ⏱️M — card ✨ deterministic theo ngày (bias notability), click bay tới + mở bài; hiện sau onboarding, tự ẩn 15s. *(xong)*
 - [ ] 💤 **Tour có chủ đề** ⏱️L — chuỗi điểm dẫn dắt (Con đường tơ lụa, kỳ quan cổ đại…).
 - [ ] 💤 **Embed widget / iframe** ⏱️M — nhúng globe vào blog/báo.
 - [ ] 💤 **Chia sẻ ảnh cảnh hiện tại** ⏱️M — export PNG có watermark + link.
@@ -64,7 +65,7 @@ Mục tiêu: giữ chân người dùng và lan toả.
 
 ## 🛠️ Phase 4 — Hạ tầng & chất lượng
 - [ ] ⭐ **Custom domain + Cloudflare Pages** ⏱️S — `wikiglobe.realitech.dev` (cần `wrangler login`).
-- [ ] ⭐ **Cancel/debounce request** ⏱️S — huỷ fetch lưới cũ khi pan nhanh (giảm tải API).
+- [x] ⭐ **Cancel/debounce request** ⏱️S — AbortController huỷ batch geosearch + query EV cũ khi pan nhanh. *(xong)*
 - [ ] 💤 **localStorage cache theo ô** ⏱️M — pan lại vùng đã xem không gọi lại API.
 - [ ] 💤 **Accessibility + keyboard nav** ⏱️M — điều hướng/đóng panel bằng phím, ARIA.
 - [ ] 💤 **Tách build (Vite) nếu phình to** ⏱️M — chỉ khi single-file quá tải; giữ triết lý nhẹ càng lâu càng tốt.
@@ -81,7 +82,7 @@ Mục tiêu: giữ chân người dùng và lan toả.
 
 ---
 
-### 🎯 Đề xuất 3 việc làm ngay
-1. **Deep-link & URL state** (S) — nền tảng share, rẻ, lợi ngay.
-2. **Search box** (M) — mở cửa khám phá.
-3. **Time slider** (L) — tính năng định danh, biến demo thành sản phẩm có "linh hồn".
+### 🎯 Đề xuất 3 việc làm tiếp
+1. **localStorage cache theo ô** (M) — pan lại vùng đã xem không gọi lại API; mượt + nhẹ tải Wikipedia/Overpass.
+2. **EV: realtime availability + giá** (L) — moat thương mại thật; cần partnership/API trả phí (OpenChargeMap, hãng sạc).
+3. **Featured có ảnh thumbnail + heatmap cho lớp EV** (M) — tăng chiều sâu trải nghiệm, "lý do quay lại".
