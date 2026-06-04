@@ -86,11 +86,11 @@
   #results .row.msg{color:var(--muted);cursor:default}
 
   /* time-mode toggle (top bar) */
-  #timetoggle,#satbtn,#surprise{all:unset;pointer-events:auto;cursor:pointer;font-size:12.5px;
+  #timetoggle,#satbtn,#heatbtn,#surprise{all:unset;pointer-events:auto;cursor:pointer;font-size:12.5px;
     font-weight:600;color:var(--muted);background:var(--panel);border:1px solid var(--line);
     border-radius:999px;padding:7px 13px;backdrop-filter:blur(10px);transition:.15s;white-space:nowrap;
     display:inline-flex;align-items:center;gap:6px}
-  #timetoggle.on,#satbtn.on,#surprise:hover{color:#fff;
+  #timetoggle.on,#satbtn.on,#heatbtn.on,#surprise:hover{color:#fff;
     background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent}
 
   /* onboarding: pick a country */
@@ -250,8 +250,8 @@
   @media(max-width:1180px){
     #brand small{display:none}
     #search{flex:1 1 80px;min-width:0}
-    #surprise .lbl,#satbtn .lbl,#timetoggle .lbl{display:none}
-    #surprise,#satbtn,#timetoggle{padding:8px 11px}
+    #surprise .lbl,#satbtn .lbl,#heatbtn .lbl,#timetoggle .lbl{display:none}
+    #surprise,#satbtn,#heatbtn,#timetoggle{padding:8px 11px}
     #count{display:none}
   }
   @media(max-width:620px){
@@ -286,6 +286,7 @@
   <div class="spacer"></div>
   <button id="surprise" title="Bay tới một địa danh bất ngờ"><span class="ico">✨</span><span class="lbl"></span></button>
   <button id="satbtn"><span class="ico">🛰</span><span class="lbl"></span></button>
+  <button id="heatbtn" title="Bản đồ mật độ tri thức"><span class="ico">🔥</span><span class="lbl"></span></button>
   <button id="timetoggle"><span class="ico">🕰</span><span class="lbl"></span></button>
   <div id="count">Đang chờ…</div>
   <div class="pill" id="lang">
@@ -357,7 +358,7 @@ const LANGS = ['vi','en','fr','ja'];
 
 /* ---------- UI translations (chrome follows the chosen language) ---------- */
 const I18N={
-  vi:{tagline:'tri thức theo địa lý',search:'Tìm địa điểm…',explore:'Khám phá',sat:'Vệ tinh',
+  vi:{tagline:'tri thức theo địa lý',search:'Tìm địa điểm…',explore:'Khám phá',sat:'Vệ tinh',heat:'Mật độ',
     timeline:'Dòng thời gian',vnonly:'Chỉ VN',
     legCity:'Đô thị',legHist:'Lịch sử',legCult:'Văn hóa',legNat:'Thiên nhiên',legSci:'Khoa học',legPpl:'Nhân vật',
     nearby:'Lân cận',shared:'Đã chép liên kết!',
@@ -371,7 +372,7 @@ const I18N={
     vihist:'Dòng sử Việt',wikiart:'Bài viết Wikipedia',nosum:'(Không có tóm tắt)',
     loaderr:'Không tải được nội dung.',searching:'Đang tìm…',noplace:'Không tìm thấy địa điểm',
     searcherr:'Lỗi tìm kiếm',bce:'TCN'},
-  en:{tagline:'knowledge by geography',search:'Search a place…',explore:'Discover',sat:'Satellite',
+  en:{tagline:'knowledge by geography',search:'Search a place…',explore:'Discover',sat:'Satellite',heat:'Density',
     timeline:'Timeline',vnonly:'VN only',
     legCity:'City',legHist:'History',legCult:'Culture',legNat:'Nature',legSci:'Science',legPpl:'People',
     nearby:'Nearby',shared:'Link copied!',
@@ -386,7 +387,7 @@ const I18N={
     loaderr:'Could not load content.',searching:'Searching…',noplace:'No place found',
     searcherr:'Search error',bce:'BCE'},
   fr:{tagline:'le savoir par la géographie',search:'Rechercher un lieu…',explore:'Explorer',
-    sat:'Satellite',timeline:'Chronologie',vnonly:'Viêt Nam',
+    sat:'Satellite',heat:'Densité',timeline:'Chronologie',vnonly:'Viêt Nam',
     legCity:'Ville',legHist:'Histoire',legCult:'Culture',legNat:'Nature',legSci:'Science',legPpl:'Personnages',
     nearby:'À proximité',shared:'Lien copié !',
     hint:'Tournez & <b>zoomez</b> pour ouvrir tous les articles',
@@ -399,7 +400,7 @@ const I18N={
     eventsVN:'{n} événements au Vietnam',vihist:'Histoire du Vietnam',wikiart:'Article Wikipédia',
     nosum:'(Pas de résumé)',loaderr:'Impossible de charger le contenu.',searching:'Recherche…',
     noplace:'Aucun lieu trouvé',searcherr:'Erreur de recherche',bce:'av. J.-C.'},
-  ja:{tagline:'地理でめぐる知識',search:'場所を検索…',explore:'発見',sat:'衛星',
+  ja:{tagline:'地理でめぐる知識',search:'場所を検索…',explore:'発見',sat:'衛星',heat:'密度',
     timeline:'年表',vnonly:'ベトナム',
     legCity:'都市',legHist:'歴史',legCult:'文化',legNat:'自然',legSci:'科学',legPpl:'人物',
     nearby:'周辺',shared:'リンクをコピーしました',
@@ -487,6 +488,8 @@ map.on('load',()=>{
 
   /* ----- global "civilization" tier: notable cities from cities.json ----- */
   map.addSource('cities',{type:'geojson',data:EMPTY,cluster:true,clusterRadius:46,clusterMaxZoom:6});
+  // density heatmap shares the same points (un-clustered) → "map of civilization"
+  map.addSource('heat',{type:'geojson',data:EMPTY});
   map.addLayer({id:'cities-clusters',type:'circle',source:'cities',filter:['has','point_count'],
     layout:{visibility:'none'},
     paint:{
@@ -510,6 +513,17 @@ map.on('load',()=>{
       'circle-color':THEME_COLOR,'circle-radius':5.5,
       'circle-stroke-width':1.6,'circle-stroke-color':'#16110a',
       'circle-opacity':.95,'circle-stroke-opacity':.5}});
+
+  // knowledge-density heatmap — warm "embers of civilization", fades into the live tier
+  map.addLayer({id:'heatmap',type:'heatmap',source:'heat',maxzoom:9,layout:{visibility:'none'},
+    paint:{
+      'heatmap-weight':0.7,
+      'heatmap-intensity':['interpolate',['linear'],['zoom'],0,0.6,4,1.2,7,2.0,9,2.6],
+      'heatmap-radius':['interpolate',['linear'],['zoom'],0,7,2,14,4,22,6,34,9,50],
+      'heatmap-opacity':['interpolate',['linear'],['zoom'],0,0.9,7,0.75,9,0],
+      'heatmap-color':['interpolate',['linear'],['heatmap-density'],
+        0,'rgba(22,19,13,0)', 0.12,'rgba(204,120,92,0.30)', 0.35,'#cc785c',
+        0.6,'#ffd479', 0.82,'#ffeebc', 1,'#ffffff']}},'cities-glow');
 
   CITIES=(window.WIKIGLOBE_CITIES&&window.WIKIGLOBE_CITIES.cities)||[];
   PLACES=(window.WIKIGLOBE_PLACES&&window.WIKIGLOBE_PLACES.places)||[];
@@ -603,6 +617,7 @@ function applyI18n(){
   qInput.placeholder=t('search');
   document.querySelector('#surprise .lbl').textContent=t('explore');
   document.querySelector('#satbtn .lbl').textContent=t('sat');
+  document.querySelector('#heatbtn .lbl').textContent=t('heat');
   document.querySelector('#timetoggle .lbl').textContent=t('timeline');
   document.querySelector('#legend .l-city').textContent=t('legCity');
   document.querySelector('#legend .l-hist').textContent=t('legHist');
@@ -651,6 +666,7 @@ function refreshGlobalTier(){
   add(PEOPLE,'p');        // notable people at their birthplace
   lastGlobalCount=feats.length;
   map.getSource('cities').setData({type:'FeatureCollection',features:feats});
+  if(map.getSource('heat')) map.getSource('heat').setData({type:'FeatureCollection',features:feats});
 }
 
 // How many grid cells the current viewport needs; Infinity if it wraps the
@@ -666,7 +682,9 @@ function updateTiers(){
   if(!map.getSource('cities')||!map.getSource('wiki')) return;
   if(timeMode) return;                           // time mode owns the layers
   const global = viewportCells() > MAX_CELLS;    // viewport too big for live grid
-  setVis(['cities-clusters','cities-cluster-count','cities-glow','cities-point'], global);
+  const heat = global && heatOn;                 // density view replaces the dots
+  setVis(['heatmap'], heat);
+  setVis(['cities-clusters','cities-cluster-count','cities-glow','cities-point'], global && !heat);
   setVis(['clusters','cluster-count','point-glow','point'], !global);
   const hint=document.getElementById('hint'), count=document.getElementById('count');
   if(global){
@@ -713,7 +731,7 @@ function cinematic(center, zoom, pitch, then){
    gsbbox rejects boxes above ~0.033 deg², so one viewport request fails almost
    everywhere. Instead split the viewport into ≤MAX_CELLS small cells, fetch them
    in parallel, and merge + dedupe by pageid into a single layer. */
-let reqId=0;
+let reqId=0, liveAbort=null;
 async function loadArticles(){
   if(!map.getSource('wiki')) return;
   const b=map.getBounds();
@@ -723,6 +741,9 @@ async function loadArticles(){
   if(cols*rows>MAX_CELLS) return;        // updateTiers should have kept us global
 
   const my=++reqId;
+  if(liveAbort) liveAbort.abort();       // cancel the previous batch on fast panning
+  liveAbort=new AbortController();
+  const signal=liveAbort.signal;
   document.getElementById('count').textContent=t('loading');
   const cells=[];
   for(let i=0;i<cols;i++) for(let j=0;j<rows;j++){
@@ -733,7 +754,7 @@ async function loadArticles(){
   try{
     const lists=await Promise.all(cells.map(box=>
       fetch(`https://${LANG}.wikipedia.org/w/api.php?action=query&format=json&origin=*`+
-            `&list=geosearch&gslimit=500&gsbbox=${box}`)
+            `&list=geosearch&gslimit=500&gsbbox=${box}`,{signal})
         .then(r=>r.json()).then(j=>(j.query&&j.query.geosearch)||[]).catch(()=>[])));
     if(my!==reqId) return;               // a newer request superseded this one
     const seen=new Set(), features=[];
@@ -970,7 +991,7 @@ function setTimeMode(on){
   setVis(['events-glow','events-point'],on);
   if(on){
     setVis(['cities-clusters','cities-cluster-count','cities-glow','cities-point',
-            'clusters','cluster-count','point-glow','point'],false);
+            'clusters','cluster-count','point-glow','point','heatmap'],false);
     document.getElementById('hint').style.opacity=0;
     document.getElementById('count').textContent=tf('timecount',EVENTS.length);
     buildEraBand(); refreshEvents();
@@ -1062,6 +1083,19 @@ satbtn.onclick=()=>{
   satbtn.classList.toggle('on',satOn);
   map.setLayoutProperty('satellite','visibility',satOn?'visible':'none');
   map.setLayoutProperty('carto','visibility',satOn?'none':'visible');
+};
+
+/* ---------- knowledge-density heatmap toggle ---------- */
+let heatOn=false;
+document.getElementById('heatbtn').onclick=function(){
+  heatOn=!heatOn;
+  this.classList.toggle('on',heatOn);
+  if(heatOn){
+    if(timeMode) setTimeMode(false);              // density and time are separate views
+    exitOrbit();
+    if(map.getZoom()>4.2) map.easeTo({center:map.getCenter(),zoom:3.0,duration:1200});
+  }
+  updateTiers();                                  // easeTo's moveend re-runs it too
 };
 
 /* ---------- "✨ Khám phá": cinematic jump to a random notable place ---------- */
