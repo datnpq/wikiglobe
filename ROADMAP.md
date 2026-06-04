@@ -74,7 +74,8 @@ Mục tiêu: giữ chân người dùng và lan toả.
 
 ## 🥽 Phase 5 — Tầm nhìn Realitech (XR/AR/VR)
 - [x] 🔥 **WebXR (POC)** — `xr.html`: three.js globe + chấm tri thức theo lăng kính, Enter VR cho Meta Quest 3 / Pico, controller chĩa-chọn → panel nổi; desktop fallback. Dùng lại lớp data tĩnh. *(xong — proof-of-concept)*
-- [ ] ⭐ **WebXR nâng cao** — hand-tracking búng chấm, time-slider dạng núm vặt 3D, lọc lăng kính trong VR, AR passthrough/để-bàn, multi-user (lớp học).
+- [x] ⭐ **Hand-tracking** — búng (pinch) tay vào chấm gần để mở, hoặc chĩa tay/tay cầm rồi pinch; bàn tay hiện dạng khớp cầu. *(xong)*
+- [ ] ⭐ **WebXR nâng cao** — time-slider dạng núm vặt 3D, lọc lăng kính trong VR, AR passthrough/để-bàn, multi-user (lớp học).
 - [ ] 💤 **Public API** — cho người khác build trên geo-index.
 - [ ] 💤 **AR "tri thức quanh tôi"** — quét môi trường, hiện bài Wikipedia geotagged.
 

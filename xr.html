@@ -35,7 +35,7 @@
 <div id="loading">Đang dựng vũ trụ tri thức…</div>
 <div id="info">
   <h1><b>WikiGlobe</b> XR</h1>
-  <p>Chĩa & bấm cò để mở một điểm tri thức. Đeo kính → bấm <b>Enter VR</b>. Trên máy tính → kéo chuột để xoay, lăn để zoom, bấm vào chấm.</p>
+  <p>Đeo kính → <b>Enter VR</b> → <b>búng (pinch) tay</b> vào một chấm để mở, hoặc chĩa tay/tay cầm rồi bóp cò. Trên máy tính → kéo chuột xoay, lăn zoom, bấm vào chấm.</p>
 </div>
 <div id="legend">
   <span><i style="background:#ffd479"></i>Đô thị</span>
@@ -57,6 +57,7 @@
 import * as THREE from 'three';
 import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 
 const THEME_COLOR = { city:0xffd479, h:0xcc785c, c:0xb98bdb, n:0x6fb98f, s:0x5aa9d6, p:0xe98aa6 };
 const R = 0.95;                                   // globe radius (metres)
@@ -216,15 +217,32 @@ async function open(meta){
 const ray = new THREE.Raycaster();
 ray.params.Points.threshold = 0.03;
 let POINTS = null;
+const _v = new THREE.Vector3();
+function selectIndex(idx){
+  const m = META[idx]; if (!m) return;
+  _v.fromBufferAttribute(POINTS.geometry.attributes.position, idx);   // globe-local
+  marker.position.copy(_v); marker.visible = true;
+  open(m);
+}
 function pickFrom(origin, dir){
   if (!POINTS) return;
   ray.set(origin, dir);
   const hit = ray.intersectObject(POINTS, false)[0];
-  if (!hit) return;
-  const m = META[hit.index]; if (!m) return;
-  const v = new THREE.Vector3().fromBufferAttribute(POINTS.geometry.attributes.position, hit.index);
-  marker.position.copy(v); marker.visible = true;
-  open(m);
+  if (hit) selectIndex(hit.index);
+}
+// nearest point to a WORLD position (for fingertip "búng" selection)
+const _wp = new THREE.Vector3();
+function nearestPoint(world){
+  if (!POINTS) return null;
+  const a = POINTS.geometry.attributes.position.array;
+  globe.updateWorldMatrix(true, false);
+  let best = -1, bd = Infinity;
+  for (let i = 0; i < a.length; i += 3){
+    _wp.set(a[i], a[i+1], a[i+2]).applyMatrix4(globe.matrixWorld);
+    const d = _wp.distanceToSquared(world);
+    if (d < bd){ bd = d; best = i/3; }
+  }
+  return { index: best, dist: Math.sqrt(bd) };
 }
 
 // desktop click
@@ -238,21 +256,40 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
     marker.position.copy(v); marker.visible = true; open(META[hit.index]); }
 });
 
-// VR controllers
+// VR controllers + hand tracking
 const tmpM = new THREE.Matrix4(), org = new THREE.Vector3(), dir = new THREE.Vector3();
+const handFactory = new XRHandModelFactory();
+const hands = [];
 for (const i of [0,1]){
   const ctrl = renderer.xr.getController(i);
   const line = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,-5)]),
-    new THREE.LineBasicMaterial({ color:0xcc785c, transparent:true, opacity:0.7 }));
-  ctrl.add(line);
+    new THREE.LineBasicMaterial({ color:0xcc785c, transparent:true, opacity:0.6 }));
+  line.scale.z = 1; ctrl.add(line);
+  // 'select' fires on a controller trigger AND on a hand pinch (the hand's
+  // primary action) — so this one handler covers both input modes.
   ctrl.addEventListener('selectstart', () => {
+    // hand "búng": if the index fingertip is right next to a dot, grab that one
+    const tip = hands[i] && hands[i].joints && hands[i].joints['index-finger-tip'];
+    if (tip){
+      tip.getWorldPosition(org);
+      if (org.distanceTo(CENTER) < 1.3){            // a real hand reaching the globe
+        const near = nearestPoint(org);
+        if (near && near.dist < 0.12){ selectIndex(near.index); return; }
+      }
+    }
+    // otherwise point-and-pinch / controller ray
     tmpM.identity().extractRotation(ctrl.matrixWorld);
     org.setFromMatrixPosition(ctrl.matrixWorld);
     dir.set(0,0,-1).applyMatrix4(tmpM).normalize();
     pickFrom(org, dir);
   });
   scene.add(ctrl);
+
+  const hand = renderer.xr.getHand(i);
+  hand.add(handFactory.createHandModel(hand, 'spheres'));   // joint spheres, no external assets
+  scene.add(hand);
+  hands[i] = hand;
 }
 
 addEventListener('resize', () => {
