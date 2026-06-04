@@ -44,9 +44,9 @@
   /* top bar */
   #bar{position:absolute;z-index:5;top:0;left:0;right:0;display:flex;align-items:center;
     gap:14px;padding:14px 18px;pointer-events:none}
-  #brand{pointer-events:auto;flex:none;display:flex;align-items:center;gap:9px;font-family:var(--serif);
-    font-weight:600;letter-spacing:.2px;font-size:20px;color:var(--brand);white-space:nowrap;
-    text-shadow:0 1px 12px rgba(0,0,0,.5)}
+  #brand{pointer-events:auto;cursor:pointer;flex:none;display:flex;align-items:center;gap:9px;
+    font-family:var(--serif);font-weight:600;letter-spacing:.2px;font-size:20px;color:var(--brand);
+    white-space:nowrap;text-shadow:0 1px 12px rgba(0,0,0,.5)}
   #brand .dot{width:11px;height:11px;border-radius:50%;
     background:radial-gradient(circle at 30% 30%,var(--accent),var(--accent2));
     box-shadow:0 0 14px var(--accent)}
@@ -58,7 +58,7 @@
   .pill button{all:unset;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;
     padding:6px 13px;border-radius:999px;transition:.15s}
   .pill button.on{color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2))}
-  #count{pointer-events:auto;font-size:12px;color:var(--muted);background:var(--panel);
+  #count{pointer-events:auto;font-size:12px;color:var(--muted);background:var(--panel);white-space:nowrap;
     border:1px solid var(--line);border-radius:999px;padding:6px 12px;backdrop-filter:blur(10px)}
   /* when the article panel is open on desktop, slide the top-bar controls clear of it */
   #bar{transition:padding-right .35s cubic-bezier(.4,0,.2,1)}
@@ -116,10 +116,6 @@
   #skip{all:unset;cursor:pointer;color:rgba(243,239,228,.7);font-size:13px;text-decoration:underline;
     text-underline-offset:3px}
   #skip:hover{color:var(--accent)}
-  /* reopen-onboard button (bottom-left, above attribution) */
-  #globe-btn{position:absolute;z-index:5;left:14px;bottom:54px;all:unset;cursor:pointer;
-    width:40px;height:40px;border-radius:50%;text-align:center;line-height:40px;font-size:17px;
-    background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(10px)}
 
   /* time slider (bottom) */
   #timebar{position:absolute;z-index:6;left:50%;bottom:24px;
@@ -246,27 +242,26 @@
   #legend .lk.off{opacity:.42}
   #legend .lk.off .d{filter:grayscale(1)}
 
-  /* responsive: collapse the top bar to icons on narrow screens */
-  @media(max-width:760px){
-    #bar{gap:8px;padding:10px 12px}
+  /* responsive: collapse action buttons to icons before the bar can crowd */
+  @media(max-width:1180px){
     #brand small{display:none}
-    #brand{font-size:18px}
-    #search{width:auto;flex:1 1 90px;min-width:0}
+    #search{flex:1 1 80px;min-width:0}
     #surprise .lbl,#satbtn .lbl,#timetoggle .lbl{display:none}
     #surprise,#satbtn,#timetoggle{padding:8px 11px}
     #count{display:none}
-    #legend{left:50%;transform:translateX(-50%);bottom:84px}
   }
-  @media(max-width:430px){
+  @media(max-width:620px){
+    #bar{gap:7px;padding:10px 12px}
     #brand .txt{display:none}
+    #brand{font-size:18px}
     .pill button{padding:6px 9px;font-size:12px}
+    #hint{display:none}
+    #legend{left:50%;transform:translateX(-50%);bottom:16px;max-width:94vw;justify-content:center}
   }
 </style>
 </head>
 <body>
 <div id="map"></div>
-
-<button id="globe-btn" title="Chọn quốc gia">🌐</button>
 
 <div id="onboard" class="hide">
   <h2>Bắt đầu hành trình từ <span class="g">đâu?</span></h2>
@@ -276,7 +271,7 @@
 </div>
 
 <div id="bar">
-  <div id="brand"><span class="dot"></span><span class="txt">WikiGlobe</span><small>tri thức theo địa lý</small></div>
+  <div id="brand" title="Chọn quốc gia"><span class="dot"></span><span class="txt">WikiGlobe</span><small>tri thức theo địa lý</small></div>
   <div id="search">
     <div class="field"><span class="ico">🔍</span>
       <input id="q" type="text" placeholder="Tìm địa điểm…" autocomplete="off"
@@ -296,7 +291,7 @@
   </div>
 </div>
 
-<div id="hint">🌍 Chấm <b style="color:#ffd479">vàng</b> = đô thị · <b style="color:#cc785c">cam</b> = danh thắng/di sản · xoay & <b>zoom vào</b> để xem mọi bài</div>
+<div id="hint">🌍 Xoay & <b>zoom vào</b> để mở mọi bài viết của vùng</div>
 
 <div id="legend">
   <button class="lk" data-th="city"><span class="d" style="background:#ffd479"></span><span class="l-city"></span></button>
@@ -356,17 +351,16 @@ const MAX_CELLS = 28;            // above this the viewport is too big → globa
 const LANGS = ['vi','en','fr','ja'];
 
 /* ---------- UI translations (chrome follows the chosen language) ---------- */
-const HINT=(g,c,rest)=>`Chấm <b style="color:#ffd479">${g}</b> · <b style="color:#cc785c">${c}</b> · ${rest}`;
 const I18N={
   vi:{tagline:'tri thức theo địa lý',search:'Tìm địa điểm…',explore:'Khám phá',sat:'Vệ tinh',
-    timeline:'Dòng thời gian',vnonly:'chỉ VN',
-    legCity:'đô thị',legHist:'lịch sử',legCult:'văn hóa',legNat:'thiên nhiên',legSci:'khoa học',legPpl:'nhân vật',
-    nearby:'Lân cận',shared:'Đã chép link!',
-    hint:HINT('vàng = đô thị','cam = danh thắng','xoay & <b>zoom vào</b> để xem mọi bài'),
+    timeline:'Dòng thời gian',vnonly:'Chỉ VN',
+    legCity:'Đô thị',legHist:'Lịch sử',legCult:'Văn hóa',legNat:'Thiên nhiên',legSci:'Khoa học',legPpl:'Nhân vật',
+    nearby:'Lân cận',shared:'Đã chép liên kết!',
+    hint:'Xoay & <b>zoom vào</b> để mở mọi bài viết của vùng',
     onboardH:'Bắt đầu hành trình từ <span class="g">đâu?</span>',
     onboardP:'Chọn một quốc gia — quả địa cầu sẽ bay tới và xoay quanh nơi đó. Hoặc khám phá tự do.',
     skip:'Khám phá tự do →',read:'Đọc toàn bộ trên Wikipedia →',loading:'Đang tải…',
-    loadingMap:'Đang tải bản đồ tri thức…',places:'{n} địa điểm nổi bật · zoom vào để xem mọi bài',
+    loadingMap:'Đang tải bản đồ tri thức…',places:'{n} địa điểm',
     inview:'{n} bài trong khung nhìn',noart:'Không có bài ở vùng này',neterr:'Lỗi mạng',
     timecount:'Dòng thời gian · {n} mốc lịch sử',events:'{n} sự kiện',eventsVN:'{n} sự kiện ở VN',
     vihist:'Dòng sử Việt',wikiart:'Bài viết Wikipedia',nosum:'(Không có tóm tắt)',
@@ -374,13 +368,13 @@ const I18N={
     searcherr:'Lỗi tìm kiếm',bce:'TCN'},
   en:{tagline:'knowledge by geography',search:'Search a place…',explore:'Discover',sat:'Satellite',
     timeline:'Timeline',vnonly:'VN only',
-    legCity:'city',legHist:'history',legCult:'culture',legNat:'nature',legSci:'science',legPpl:'people',
+    legCity:'City',legHist:'History',legCult:'Culture',legNat:'Nature',legSci:'Science',legPpl:'People',
     nearby:'Nearby',shared:'Link copied!',
-    hint:HINT('gold = city','coral = landmark','spin & <b>zoom in</b> to see every article'),
+    hint:'Spin & <b>zoom in</b> to open every article in view',
     onboardH:'Where does your journey <span class="g">begin?</span>',
     onboardP:'Pick a country — the globe flies there and orbits it. Or explore freely.',
     skip:'Explore freely →',read:'Read the full article on Wikipedia →',loading:'Loading…',
-    loadingMap:'Loading the knowledge map…',places:'{n} notable places · zoom in to see every article',
+    loadingMap:'Loading the knowledge map…',places:'{n} places',
     inview:'{n} articles in view',noart:'No articles in this area',neterr:'Network error',
     timecount:'Timeline · {n} historical markers',events:'{n} events',eventsVN:'{n} events in Vietnam',
     vihist:'Vietnamese history',wikiart:'Wikipedia article',nosum:'(No summary)',
@@ -388,13 +382,13 @@ const I18N={
     searcherr:'Search error',bce:'BCE'},
   fr:{tagline:'le savoir par la géographie',search:'Rechercher un lieu…',explore:'Explorer',
     sat:'Satellite',timeline:'Chronologie',vnonly:'Viêt Nam',
-    legCity:'ville',legHist:'histoire',legCult:'culture',legNat:'nature',legSci:'science',legPpl:'personnages',
+    legCity:'Ville',legHist:'Histoire',legCult:'Culture',legNat:'Nature',legSci:'Science',legPpl:'Personnages',
     nearby:'À proximité',shared:'Lien copié !',
-    hint:HINT('or = ville','corail = site','tournez & <b>zoomez</b> pour voir tous les articles'),
+    hint:'Tournez & <b>zoomez</b> pour ouvrir tous les articles',
     onboardH:'Où commence votre <span class="g">voyage ?</span>',
     onboardP:'Choisissez un pays — le globe s’y rend et tourne autour. Ou explorez librement.',
     skip:'Explorer librement →',read:'Lire l’article complet sur Wikipédia →',loading:'Chargement…',
-    loadingMap:'Chargement de la carte du savoir…',places:'{n} lieux notables · zoomez pour tout voir',
+    loadingMap:'Chargement de la carte du savoir…',places:'{n} lieux',
     inview:'{n} articles dans la vue',noart:'Aucun article dans cette zone',neterr:'Erreur réseau',
     timecount:'Chronologie · {n} repères historiques',events:'{n} événements',
     eventsVN:'{n} événements au Vietnam',vihist:'Histoire du Vietnam',wikiart:'Article Wikipédia',
@@ -404,11 +398,11 @@ const I18N={
     timeline:'年表',vnonly:'ベトナム',
     legCity:'都市',legHist:'歴史',legCult:'文化',legNat:'自然',legSci:'科学',legPpl:'人物',
     nearby:'周辺',shared:'リンクをコピーしました',
-    hint:HINT('金 = 都市','橙 = 名所','回して<b>ズーム</b>すると記事が見えます'),
+    hint:'回して<b>ズーム</b>すると記事が開きます',
     onboardH:'旅の出発点は<span class="g">どこ？</span>',
     onboardP:'国を選ぶと地球がそこへ飛び、周回します。自由に探索もできます。',
     skip:'自由に探索 →',read:'Wikipediaで全文を読む →',loading:'読み込み中…',
-    loadingMap:'知識の地図を読み込み中…',places:'注目の場所 {n} 件 · ズームで全記事',
+    loadingMap:'知識の地図を読み込み中…',places:'{n} 地点',
     inview:'表示範囲に {n} 件',noart:'この地域に記事はありません',neterr:'ネットワークエラー',
     timecount:'年表 · 歴史の節目 {n} 件',events:'{n} 件の出来事',eventsVN:'ベトナムの出来事 {n} 件',
     vihist:'ベトナムの歴史',wikiart:'Wikipedia の記事',nosum:'(要約なし)',
@@ -459,7 +453,7 @@ const map = new maplibregl.Map({
   canvasContextAttributes:{antialias:true}
 });
 window.map = map;   // expose for console debugging
-map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-left');
+map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
 map.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
 
 map.on('style.load',()=> map.setProjection({type:'globe'}));
@@ -1121,7 +1115,7 @@ function initOnboard(){
     flyToCountry(COUNTRIES[+b.dataset.i]);
   });
   document.getElementById('skip').onclick=closeOnboard;
-  document.getElementById('globe-btn').onclick=openOnboard;
+  document.getElementById('brand').onclick=openOnboard;   // logo reopens the picker
   if(!START) setTimeout(openOnboard,350);   // shared deep-links skip onboarding
 }
 </script>
