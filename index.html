@@ -235,12 +235,15 @@
     background:rgba(204,120,92,.45);border-radius:8px}
 
   /* legend chip (bottom-left, dot key) */
-  #legend{position:absolute;z-index:4;left:14px;bottom:14px;display:flex;gap:12px;align-items:center;
-    background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 13px;
-    backdrop-filter:blur(10px);font-size:11.5px;color:var(--muted);pointer-events:none;
-    transition:opacity .3s}
-  #legend .k{display:flex;align-items:center;gap:5px}
-  #legend .d{width:9px;height:9px;border-radius:50%}
+  #legend{position:absolute;z-index:4;left:14px;bottom:14px;display:flex;flex-wrap:wrap;gap:6px;
+    max-width:48vw;transition:opacity .3s}
+  #legend .lk{all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:11.5px;
+    font-weight:600;color:var(--txt);background:var(--panel);border:1px solid var(--line);
+    border-radius:999px;padding:5px 11px;backdrop-filter:blur(10px);transition:.15s}
+  #legend .lk:hover{border-color:var(--accent)}
+  #legend .lk .d{width:9px;height:9px;border-radius:50%;flex:none}
+  #legend .lk.off{opacity:.42}
+  #legend .lk.off .d{filter:grayscale(1)}
 
   /* responsive: collapse the top bar to icons on narrow screens */
   @media(max-width:760px){
@@ -295,8 +298,11 @@
 <div id="hint">🌍 Chấm <b style="color:#ffd479">vàng</b> = đô thị · <b style="color:#cc785c">cam</b> = danh thắng/di sản · xoay & <b>zoom vào</b> để xem mọi bài</div>
 
 <div id="legend">
-  <span class="k"><span class="d" style="background:#ffd479"></span><span class="l-city"></span></span>
-  <span class="k"><span class="d" style="background:#cc785c"></span><span class="l-place"></span></span>
+  <button class="lk" data-th="city"><span class="d" style="background:#ffd479"></span><span class="l-city"></span></button>
+  <button class="lk" data-th="h"><span class="d" style="background:#cc785c"></span><span class="l-hist"></span></button>
+  <button class="lk" data-th="c"><span class="d" style="background:#b98bdb"></span><span class="l-cult"></span></button>
+  <button class="lk" data-th="n"><span class="d" style="background:#6fb98f"></span><span class="l-nat"></span></button>
+  <button class="lk" data-th="s"><span class="d" style="background:#5aa9d6"></span><span class="l-sci"></span></button>
 </div>
 
 <div id="timebar">
@@ -350,7 +356,8 @@ const LANGS = ['vi','en','fr','ja'];
 const HINT=(g,c,rest)=>`Chấm <b style="color:#ffd479">${g}</b> · <b style="color:#cc785c">${c}</b> · ${rest}`;
 const I18N={
   vi:{tagline:'tri thức theo địa lý',search:'Tìm địa điểm…',explore:'Khám phá',sat:'Vệ tinh',
-    timeline:'Dòng thời gian',vnonly:'chỉ VN',legCity:'đô thị',legPlace:'danh thắng',
+    timeline:'Dòng thời gian',vnonly:'chỉ VN',
+    legCity:'đô thị',legHist:'lịch sử',legCult:'văn hóa',legNat:'thiên nhiên',legSci:'khoa học',
     nearby:'Lân cận',shared:'Đã chép link!',
     hint:HINT('vàng = đô thị','cam = danh thắng','xoay & <b>zoom vào</b> để xem mọi bài'),
     onboardH:'Bắt đầu hành trình từ <span class="g">đâu?</span>',
@@ -363,7 +370,8 @@ const I18N={
     loaderr:'Không tải được nội dung.',searching:'Đang tìm…',noplace:'Không tìm thấy địa điểm',
     searcherr:'Lỗi tìm kiếm',bce:'TCN'},
   en:{tagline:'knowledge by geography',search:'Search a place…',explore:'Discover',sat:'Satellite',
-    timeline:'Timeline',vnonly:'VN only',legCity:'city',legPlace:'landmark',
+    timeline:'Timeline',vnonly:'VN only',
+    legCity:'city',legHist:'history',legCult:'culture',legNat:'nature',legSci:'science',
     nearby:'Nearby',shared:'Link copied!',
     hint:HINT('gold = city','coral = landmark','spin & <b>zoom in</b> to see every article'),
     onboardH:'Where does your journey <span class="g">begin?</span>',
@@ -376,7 +384,8 @@ const I18N={
     loaderr:'Could not load content.',searching:'Searching…',noplace:'No place found',
     searcherr:'Search error',bce:'BCE'},
   fr:{tagline:'le savoir par la géographie',search:'Rechercher un lieu…',explore:'Explorer',
-    sat:'Satellite',timeline:'Chronologie',vnonly:'Viêt Nam',legCity:'ville',legPlace:'site',
+    sat:'Satellite',timeline:'Chronologie',vnonly:'Viêt Nam',
+    legCity:'ville',legHist:'histoire',legCult:'culture',legNat:'nature',legSci:'science',
     nearby:'À proximité',shared:'Lien copié !',
     hint:HINT('or = ville','corail = site','tournez & <b>zoomez</b> pour voir tous les articles'),
     onboardH:'Où commence votre <span class="g">voyage ?</span>',
@@ -389,7 +398,8 @@ const I18N={
     nosum:'(Pas de résumé)',loaderr:'Impossible de charger le contenu.',searching:'Recherche…',
     noplace:'Aucun lieu trouvé',searcherr:'Erreur de recherche',bce:'av. J.-C.'},
   ja:{tagline:'地理でめぐる知識',search:'場所を検索…',explore:'発見',sat:'衛星',
-    timeline:'年表',vnonly:'ベトナム',legCity:'都市',legPlace:'名所',
+    timeline:'年表',vnonly:'ベトナム',
+    legCity:'都市',legHist:'歴史',legCult:'文化',legNat:'自然',legSci:'科学',
     nearby:'周辺',shared:'リンクをコピーしました',
     hint:HINT('金 = 都市','橙 = 名所','回して<b>ズーム</b>すると記事が見えます'),
     onboardH:'旅の出発点は<span class="g">どこ？</span>',
@@ -486,16 +496,18 @@ map.on('load',()=>{
     layout:{visibility:'none','text-field':['get','point_count_abbreviated'],'text-size':13,
       'text-font':['Open Sans Bold','Noto Sans Bold']},
     paint:{'text-color':'#2a1c05'}});
-  const KIND_COLOR=['match',['get','kind'],'place','#cc785c','#ffd479'];
+  // knowledge themes: history=coral, culture=violet, nature=green, science=blue, city=gold
+  const THEME_COLOR=['match',['get','theme'],
+    'h','#cc785c','c','#b98bdb','n','#6fb98f','s','#5aa9d6','#ffd479'];
   map.addLayer({id:'cities-glow',type:'circle',source:'cities',filter:['!',['has','point_count']],
     layout:{visibility:'none'},
-    paint:{'circle-color':KIND_COLOR,'circle-radius':13,'circle-opacity':.13}});
+    paint:{'circle-color':THEME_COLOR,'circle-radius':13,'circle-opacity':.13}});
   map.addLayer({id:'cities-point',type:'circle',source:'cities',filter:['!',['has','point_count']],
     layout:{visibility:'none'},
     paint:{
-      'circle-color':KIND_COLOR,'circle-radius':5.5,
-      'circle-stroke-width':2,'circle-stroke-color':['match',['get','kind'],'place','#8f3a24','#c98a2e'],
-      'circle-opacity':.95,'circle-stroke-opacity':.6}});
+      'circle-color':THEME_COLOR,'circle-radius':5.5,
+      'circle-stroke-width':1.6,'circle-stroke-color':'#16110a',
+      'circle-opacity':.95,'circle-stroke-opacity':.5}});
 
   CITIES=(window.WIKIGLOBE_CITIES&&window.WIKIGLOBE_CITIES.cities)||[];
   PLACES=(window.WIKIGLOBE_PLACES&&window.WIKIGLOBE_PLACES.places)||[];
@@ -590,7 +602,10 @@ function applyI18n(){
   document.querySelector('#satbtn .lbl').textContent=t('sat');
   document.querySelector('#timetoggle .lbl').textContent=t('timeline');
   document.querySelector('#legend .l-city').textContent=t('legCity');
-  document.querySelector('#legend .l-place').textContent=t('legPlace');
+  document.querySelector('#legend .l-hist').textContent=t('legHist');
+  document.querySelector('#legend .l-cult').textContent=t('legCult');
+  document.querySelector('#legend .l-nat').textContent=t('legNat');
+  document.querySelector('#legend .l-sci').textContent=t('legSci');
   document.getElementById('vntoggle').innerHTML=
     '<img class="vnflag" src="https://flagcdn.com/vn.svg" alt="VN">'+t('vnonly');
   document.getElementById('hint').innerHTML='🌍 '+t('hint');
@@ -600,24 +615,35 @@ function applyI18n(){
   document.getElementById('p-link').textContent=t('read');
   renderCountries();
 }
+// Legend doubles as the theme filter — click a lens to toggle it.
+document.getElementById('legend').addEventListener('click',e=>{
+  const b=e.target.closest('.lk'); if(!b) return;
+  const th=b.dataset.th;
+  if(activeThemes.has(th)) activeThemes.delete(th); else activeThemes.add(th);
+  b.classList.toggle('off', !activeThemes.has(th));
+  refreshGlobalTier(); updateTiers();
+});
 
 /* ---------- tier orchestration: global cities vs live geosearch ---------- */
 const setVis=(ids,on)=>ids.forEach(id=>
   map.getLayer(id)&&map.setLayoutProperty(id,'visibility',on?'visible':'none'));
 
 let lastGlobalCount=0;
+const activeThemes=new Set(['city','h','c','n','s']);   // knowledge lenses (legend toggles)
 function refreshGlobalTier(){
   if(!map.getSource('cities')) return;
   const feats=[];
-  const add=(arr,kind)=>{
+  const add=(arr,fixed)=>{
     for(const c of arr){
       const title=c[3][LANG]; if(!title) continue;
+      const theme=fixed||c[4]||'h';
+      if(!activeThemes.has(theme)) continue;
       feats.push({type:'Feature',geometry:{type:'Point',coordinates:[c[0],c[1]]},
-        properties:{title,kind}});
+        properties:{title,theme}});
     }
   };
-  add(CITIES,'city');     // warm-gold dots
-  add(PLACES,'place');    // coral dots — heritage, landmarks, nature…
+  add(CITIES,'city');     // settlements
+  add(PLACES,null);       // theme from the dataset (history/culture/nature/science)
   lastGlobalCount=feats.length;
   map.getSource('cities').setData({type:'FeatureCollection',features:feats});
 }
@@ -934,7 +960,8 @@ function setTimeMode(on){
   timeMode=on;
   timetoggle.classList.toggle('on',on);
   timebar.classList.toggle('on',on);
-  document.getElementById('legend').style.opacity=on?0:1;
+  const lg=document.getElementById('legend');
+  lg.style.opacity=on?0:1; lg.style.pointerEvents=on?'none':'auto';
   setVis(['events-glow','events-point'],on);
   if(on){
     setVis(['cities-clusters','cities-cluster-count','cities-glow','cities-point',

@@ -45,7 +45,7 @@ Mục tiêu: lấp **gap zoom trung gian** (z6–10 hiện chỉ có đô thị)
 - [ ] ⭐ **Heatmap mật độ** ⏱️M — vùng dày tri thức sáng rực = "bản đồ văn minh".
 - [ ] ⭐ **Mở rộng tầng toàn cầu** ⏱️M — không chỉ đô thị: di sản UNESCO, núi, danh thắng, sân bay… (thêm `P31` vào `build-cities.mjs`).
 - [x] ⭐ **Đào sâu Việt Nam** ⏱️M — `vn-events.js` (22 sự kiện sử Việt verified) + toggle "🇻🇳 chỉ VN" lọc sự kiện theo vùng & khung VN. *(xong)*
-- [ ] ⭐ **Bộ lọc theo loại** ⏱️M — người / sự kiện / địa danh / thiên nhiên; đổi màu & toggle.
+- [x] 🔥 **Phân lớp theo chủ đề** ⏱️L — mỗi điểm gắn lĩnh vực (Đô thị / Lịch sử / Văn hóa / Thiên nhiên / Khoa học) phân loại qua kiểu Wikidata; tô màu riêng; **legend = bộ lọc** bật/tắt từng lăng kính. Globe thành bản đồ tri thức đa lĩnh vực. *(xong)*
 - [ ] 💤 **Auto-rebuild `cities.js`** ⏱️S — GitHub Action cron hàng tháng chạy `build-cities.mjs` + commit.
 
 ---

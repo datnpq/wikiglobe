@@ -7,8 +7,8 @@
 ## ✨ Tính năng (MVP)
 - **Globe 3D** (MapLibre GL v5 `projection: globe`) tự xoay khi idle, trên nền sao.
 - **Dữ liệu 2 tầng** — globe **luôn sáng**:
-  - *Tầng toàn cầu* (zoom xa→trung bình): ~4.000 đô thị (`cities.js`, vàng) + ~35.000 địa danh nổi bật (`places.js`, coral — di sản, danh thắng, núi/hồ…) → dày tri thức ở mọi mức zoom.
-  - *Tầng live* (zoom gần): geosearch Wikipedia thật theo viewport, chấm coral.
+  - *Tầng toàn cầu* (zoom xa→trung bình): ~4.000 đô thị (`cities.js`) + ~27.000 địa danh (`places.js`) **phân lớp theo chủ đề** — Đô thị / Lịch sử / Văn hóa / Thiên nhiên / Khoa học, mỗi lĩnh vực một màu, **legend = bộ lọc** bật/tắt.
+  - *Tầng live* (zoom gần): geosearch Wikipedia thật theo viewport.
 - **Grid-sampling** — chia khung nhìn thành ô nhỏ rồi gộp, vượt giới hạn diện tích `gsbbox`.
 - **Clustering** — zoom xa gom cụm, zoom gần tách từng bài.
 - **Dòng thời gian** 🕰 — kéo năm (1830 TCN → 2026), globe hiện sự kiện lịch sử tô màu theo thời đại; có nút tự chạy; chia sẻ khoảnh khắc qua URL.
