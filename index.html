@@ -381,7 +381,7 @@ const CELL = 0.16;               // degrees per grid cell side (0.16² ≈ 0.026
 const MAX_CELLS = 28;            // above this the viewport is too big → global tier
 // EV proxy (Cloudflare Worker): blends US AFDC + global OSM and hides the API key.
 // Leave '' to call Overpass directly (fallback). Set after deploying ev-proxy/.
-const EV_PROXY = '';
+const EV_PROXY = 'https://wikiglobe-ev.dat-ngo2994.workers.dev';
 
 /* ---------- shareable URL state: #zoom/lat/lng/lang ---------- */
 const LANGS = ['vi','en','fr','ja'];

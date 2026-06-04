@@ -2,5 +2,15 @@ name = "wikiglobe-ev"
 main = "src/worker.js"
 compatibility_date = "2024-11-01"
 
+# Durable tile cache. Create it, then paste the printed id below:
+#   npx wrangler kv namespace create EV_CACHE
+[[kv_namespaces]]
+binding = "EV_CACHE"
+id = "d5e134740da8498c9c677f203ae78c37"
+
+# Nightly refresh of stale US tiles (within the monthly AFDC budget)
+[triggers]
+crons = ["0 3 * * *"]
+
 # The RapidAPI key is NOT stored here. Set it once as an encrypted secret:
-#   wrangler secret put RAPIDAPI_KEY
+#   npx wrangler secret put RAPIDAPI_KEY
