@@ -1,0 +1,6 @@
+name = "wikiglobe-ev"
+main = "src/worker.js"
+compatibility_date = "2024-11-01"
+
+# The RapidAPI key is NOT stored here. Set it once as an encrypted secret:
+#   wrangler secret put RAPIDAPI_KEY

@@ -237,6 +237,10 @@
     max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #p-nearby .chip:hover{border-color:var(--accent);color:var(--accent)}
   .loading{padding:40px 22px;color:var(--muted);font-size:14px}
+  /* EV station status badge in the panel */
+  .evstatus{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px}
+  .evstatus.ok{color:#0a7d52;background:rgba(22,199,132,.18)}
+  .evstatus.na{color:#b4543a;background:rgba(204,80,60,.16)}
 
   /* pulse marker on the selected article */
   .wg-pulse{width:13px;height:13px;border-radius:50%;background:var(--accent);cursor:pointer;
@@ -375,6 +379,9 @@ let timeMode = false;            // time slider active → globe shows history
 // merges them. CELL² must stay under that cap; MAX_CELLS bounds parallel requests.
 const CELL = 0.16;               // degrees per grid cell side (0.16² ≈ 0.026 deg²)
 const MAX_CELLS = 28;            // above this the viewport is too big → global tier
+// EV proxy (Cloudflare Worker): blends US AFDC + global OSM and hides the API key.
+// Leave '' to call Overpass directly (fallback). Set after deploying ev-proxy/.
+const EV_PROXY = '';
 
 /* ---------- shareable URL state: #zoom/lat/lng/lang ---------- */
 const LANGS = ['vi','en','fr','ja'];
@@ -396,7 +403,7 @@ const I18N={
     loaderr:'Không tải được nội dung.',searching:'Đang tìm…',noplace:'Không tìm thấy địa điểm',
     searcherr:'Lỗi tìm kiếm',bce:'TCN',
     ev:'Trạm sạc',evzoom:'Zoom vào để xem trạm sạc',evcount:'{n} trạm sạc',
-    evstation:'Trạm sạc xe điện',evconn:'Cổng sạc',evpower:'Công suất',evcap:'Số chỗ',
+    evstation:'Trạm sạc xe điện',evconn:'Cổng sạc',evpower:'Công suất',evcap:'Số chỗ',evports:'Số cổng',
     evfee:'Phí',evfree:'Miễn phí',evpaid:'Trả phí',evchecked:'Cập nhật',
     evnodata:'Chưa có thông tin chi tiết',evdir:'Chỉ đường',evsrc:'Nguồn: OpenStreetMap',
     featuredToday:'Nổi bật hôm nay'},
@@ -415,7 +422,7 @@ const I18N={
     loaderr:'Could not load content.',searching:'Searching…',noplace:'No place found',
     searcherr:'Search error',bce:'BCE',
     ev:'EV',evzoom:'Zoom in to see charging stations',evcount:'{n} charging stations',
-    evstation:'EV charging station',evconn:'Connectors',evpower:'Power',evcap:'Bays',
+    evstation:'EV charging station',evconn:'Connectors',evpower:'Power',evcap:'Bays',evports:'Ports',
     evfee:'Fee',evfree:'Free',evpaid:'Paid',evchecked:'Verified',
     evnodata:'No detailed information yet',evdir:'Directions',evsrc:'Source: OpenStreetMap',
     featuredToday:'Today’s highlight'},
@@ -434,7 +441,7 @@ const I18N={
     nosum:'(Pas de résumé)',loaderr:'Impossible de charger le contenu.',searching:'Recherche…',
     noplace:'Aucun lieu trouvé',searcherr:'Erreur de recherche',bce:'av. J.-C.',
     ev:'Bornes',evzoom:'Zoomez pour voir les bornes',evcount:'{n} bornes de recharge',
-    evstation:'Borne de recharge',evconn:'Connecteurs',evpower:'Puissance',evcap:'Places',
+    evstation:'Borne de recharge',evconn:'Connecteurs',evpower:'Puissance',evcap:'Places',evports:'Bornes',
     evfee:'Tarif',evfree:'Gratuit',evpaid:'Payant',evchecked:'Vérifié',
     evnodata:'Pas encore de détails',evdir:'Itinéraire',evsrc:'Source : OpenStreetMap',
     featuredToday:'À la une aujourd’hui'},
@@ -453,7 +460,7 @@ const I18N={
     loaderr:'コンテンツを読み込めませんでした。',searching:'検索中…',noplace:'場所が見つかりません',
     searcherr:'検索エラー',bce:'紀元前',
     ev:'充電',evzoom:'ズームして充電器を表示',evcount:'{n} 件の充電ステーション',
-    evstation:'EV充電ステーション',evconn:'コネクタ',evpower:'出力',evcap:'台数',
+    evstation:'EV充電ステーション',evconn:'コネクタ',evpower:'出力',evcap:'台数',evports:'ポート数',
     evfee:'料金',evfree:'無料',evpaid:'有料',evchecked:'確認日',
     evnodata:'詳細情報はまだありません',evdir:'経路案内',evsrc:'出典: OpenStreetMap',
     featuredToday:'今日の注目'},
@@ -936,14 +943,19 @@ function openStation(p,coord){
   clearMarker(); pNearby.innerHTML='';
   document.getElementById('hero').style.backgroundImage='linear-gradient(135deg,#0f5132,#16c784)';
   document.getElementById('p-title').textContent=p.title;
-  const meta=[]; if(p.operator) meta.push(p.operator); meta.push(t('evstation'));
-  document.getElementById('p-meta').textContent=meta.join(' · ');
   const esc=s=>String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+  const meta=[]; if(p.operator) meta.push(esc(p.operator));
+  if(p.network && p.network!==p.operator) meta.push(esc(p.network));
+  meta.push(t('evstation'));
+  document.getElementById('p-meta').innerHTML=meta.join(' · ');
   const rows=[];
+  if(p.status){ const ok=/avail/i.test(p.status);
+    rows.push(`<span class="evstatus ${ok?'ok':'na'}">${esc(p.status)}</span>`); }
+  if(p.address)  rows.push(`📍 ${esc(p.address)}`);
   if(p.conn)     rows.push(`🔌 <b>${t('evconn')}:</b> ${esc(p.conn)}`);
+  if(p.ports)    rows.push(`🔢 <b>${t('evports')}:</b> ${esc(p.ports)}`);
   if(p.power)    rows.push(`⚡ <b>${t('evpower')}:</b> ${esc(p.power)}`);
-  if(p.capacity) rows.push(`🅿️ <b>${t('evcap')}:</b> ${esc(p.capacity)}`);
-  if(p.fee)      rows.push(`💳 <b>${t('evfee')}:</b> ${p.fee==='no'?t('evfree'):p.fee==='yes'?t('evpaid'):esc(p.fee)}`);
+  if(p.fee)      rows.push(`💳 <b>${t('evfee')}:</b> ${p.fee==='no'||/free/i.test(p.fee)?t('evfree'):p.fee==='yes'?t('evpaid'):esc(p.fee)}`);
   if(p.access)   rows.push(`🔒 ${esc(p.access)}`);
   if(p.checkdate)rows.push(`🕓 <b>${t('evchecked')}:</b> ${esc(p.checkdate)}`);
   let html = rows.length ? rows.map(r=>`<div style="margin:5px 0">${r}</div>`).join('')
@@ -1223,13 +1235,14 @@ function evProps(tg){
   let power=''; for(const k of ['socket:type2:output','socket:ccs:output','socket:chademo:output',
     'socket:type2_combo:output','maxpower','charge']) if(tg[k]){ power=String(tg[k]); break; }
   if(power && /^[\d.]+$/.test(power)) power+=' kW';
-  return {
+  const cap=tg['capacity:motorcar']||tg.capacity||'';
+  return {                                            // unified station schema (matches the proxy)
     title: tg.name||tg.operator||tg.brand||tg.network||t('evstation'),
-    operator: tg.operator||tg.brand||tg.network||'',
-    conn:[...new Set(conns)].join(' · '), power,
+    operator: tg.operator||tg.brand||tg.network||'', network: tg.network||'', status:'',
+    conn:[...new Set(conns)].join(' · '), ports: cap?('×'+cap):'', power,
     fee:tg.fee||'', access:(tg.access&&tg.access!=='yes')?tg.access:'',
-    capacity:tg['capacity:motorcar']||tg.capacity||'',
-    website:tg.website||tg['contact:website']||'', checkdate:tg.check_date||''
+    website:tg.website||tg['contact:website']||'',
+    address:[tg['addr:street'],tg['addr:city']].filter(Boolean).join(', '), checkdate:tg.check_date||''
   };
 }
 async function loadEV(){
@@ -1247,7 +1260,26 @@ async function loadEV(){
   if(evAbort) evAbort.abort();                      // cancel the previous query on fast panning
   evAbort=new AbortController();
   count.textContent=t('loading');
-  // GET ?data=… avoids Overpass's 406 on POST text/plain; try mirrors in order.
+  try{
+    // Prefer the Worker proxy (US AFDC + global OSM, key hidden); else Overpass direct.
+    const stations = EV_PROXY
+      ? await fetchProxy(s,w,n,e,evAbort.signal)
+      : await fetchOverpass(s,w,n,e,evAbort.signal);
+    if(my!==evReq) return;                           // a newer query already ran
+    if(stations===null){ count.textContent=t('neterr'); return; }
+    const feats=stations.filter(st=>isFinite(st.lat)&&isFinite(st.lon)).map(st=>({
+      type:'Feature',geometry:{type:'Point',coordinates:[st.lon,st.lat]},properties:st}));
+    map.getSource('ev').setData({type:'FeatureCollection',features:feats});
+    count.textContent=tf('evcount',feats.length);
+  }catch(err){ if(my===evReq && err.name!=='AbortError') count.textContent=t('neterr'); }
+}
+async function fetchProxy(s,w,n,e,signal){       // Cloudflare Worker → normalised {stations}
+  const r=await fetch(`${EV_PROXY}/stations?bbox=${s},${w},${n},${e}`,{signal});
+  if(!r.ok) return null;
+  const j=await r.json();
+  return j.stations||[];
+}
+async function fetchOverpass(s,w,n,e,signal){     // direct OSM fallback (GET ?data= avoids 406)
   const q=`[out:json][timeout:25];node[amenity=charging_station](${s},${w},${n},${e});out body 600;`;
   const enc=encodeURIComponent(q);
   const endpoints=[
@@ -1255,23 +1287,16 @@ async function loadEV(){
     'https://overpass.kumi.systems/api/interpreter?data='+enc,
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter?data='+enc,
   ];
-  try{
-    let j=null;
-    for(const url of endpoints){
-      try{
-        const r=await fetch(url,{signal:evAbort.signal});
-        if(!r.ok) continue;                         // 406/429/5xx → try the next mirror
-        j=await r.json(); break;
-      }catch(e){ if(e.name==='AbortError') return; } // superseded/cancelled → bail quietly
-    }
-    if(my!==evReq) return;                           // a newer query already ran
-    if(!j){ count.textContent=t('neterr'); return; }
-    const feats=(j.elements||[]).filter(el=>isFinite(el.lat)&&isFinite(el.lon)).map(el=>({
-      type:'Feature',geometry:{type:'Point',coordinates:[el.lon,el.lat]},
-      properties:evProps(el.tags||{})}));
-    map.getSource('ev').setData({type:'FeatureCollection',features:feats});
-    count.textContent=tf('evcount',feats.length);
-  }catch(err){ if(my===evReq && err.name!=='AbortError') count.textContent=t('neterr'); }
+  for(const url of endpoints){
+    try{
+      const r=await fetch(url,{signal});
+      if(!r.ok) continue;                           // 406/429/5xx → next mirror
+      const j=await r.json();
+      return (j.elements||[]).filter(el=>isFinite(el.lat)&&isFinite(el.lon))
+        .map(el=>({...evProps(el.tags||{}), lat:el.lat, lon:el.lon}));
+    }catch(e){ if(e.name==='AbortError') throw e; } // cancelled → propagate to loadEV
+  }
+  return null;
 }
 function setEvMode(on){
   evOn=on; evbtn.classList.toggle('on',on);
