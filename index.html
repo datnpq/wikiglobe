@@ -14,6 +14,7 @@
 <script defer src="places.js"></script><!-- notable places index (densifies mid-zoom) -->
 <script defer src="events.js"></script><!-- dated history index for the time slider -->
 <script defer src="vn-events.js"></script><!-- curated Vietnamese-history backbone -->
+<script defer src="people.js"></script><!-- curated notable people (birthplaces) -->
 <style>
   :root{
     /* Anthropic / Claude palette: warm paper, clay-coral accent, editorial serif */
@@ -303,6 +304,7 @@
   <button class="lk" data-th="c"><span class="d" style="background:#b98bdb"></span><span class="l-cult"></span></button>
   <button class="lk" data-th="n"><span class="d" style="background:#6fb98f"></span><span class="l-nat"></span></button>
   <button class="lk" data-th="s"><span class="d" style="background:#5aa9d6"></span><span class="l-sci"></span></button>
+  <button class="lk" data-th="p"><span class="d" style="background:#e98aa6"></span><span class="l-ppl"></span></button>
 </div>
 
 <div id="timebar">
@@ -341,6 +343,7 @@ const EMPTY = {type:'FeatureCollection', features:[]};
 let LANG = 'vi';
 let CITIES = [];                 // global "civilization" index from cities.js
 let PLACES = [];                 // notable-places index from places.js (mid-zoom density)
+let PEOPLE = [];                 // curated notable people (birthplaces) from people.js
 let EVENTS = [];                 // dated history index from events.js
 let timeMode = false;            // time slider active → globe shows history
 // Wikipedia's geosearch gsbbox caps the box by AREA (~0.033 deg² empirically),
@@ -357,7 +360,7 @@ const HINT=(g,c,rest)=>`Chấm <b style="color:#ffd479">${g}</b> · <b style="co
 const I18N={
   vi:{tagline:'tri thức theo địa lý',search:'Tìm địa điểm…',explore:'Khám phá',sat:'Vệ tinh',
     timeline:'Dòng thời gian',vnonly:'chỉ VN',
-    legCity:'đô thị',legHist:'lịch sử',legCult:'văn hóa',legNat:'thiên nhiên',legSci:'khoa học',
+    legCity:'đô thị',legHist:'lịch sử',legCult:'văn hóa',legNat:'thiên nhiên',legSci:'khoa học',legPpl:'nhân vật',
     nearby:'Lân cận',shared:'Đã chép link!',
     hint:HINT('vàng = đô thị','cam = danh thắng','xoay & <b>zoom vào</b> để xem mọi bài'),
     onboardH:'Bắt đầu hành trình từ <span class="g">đâu?</span>',
@@ -371,7 +374,7 @@ const I18N={
     searcherr:'Lỗi tìm kiếm',bce:'TCN'},
   en:{tagline:'knowledge by geography',search:'Search a place…',explore:'Discover',sat:'Satellite',
     timeline:'Timeline',vnonly:'VN only',
-    legCity:'city',legHist:'history',legCult:'culture',legNat:'nature',legSci:'science',
+    legCity:'city',legHist:'history',legCult:'culture',legNat:'nature',legSci:'science',legPpl:'people',
     nearby:'Nearby',shared:'Link copied!',
     hint:HINT('gold = city','coral = landmark','spin & <b>zoom in</b> to see every article'),
     onboardH:'Where does your journey <span class="g">begin?</span>',
@@ -385,7 +388,7 @@ const I18N={
     searcherr:'Search error',bce:'BCE'},
   fr:{tagline:'le savoir par la géographie',search:'Rechercher un lieu…',explore:'Explorer',
     sat:'Satellite',timeline:'Chronologie',vnonly:'Viêt Nam',
-    legCity:'ville',legHist:'histoire',legCult:'culture',legNat:'nature',legSci:'science',
+    legCity:'ville',legHist:'histoire',legCult:'culture',legNat:'nature',legSci:'science',legPpl:'personnages',
     nearby:'À proximité',shared:'Lien copié !',
     hint:HINT('or = ville','corail = site','tournez & <b>zoomez</b> pour voir tous les articles'),
     onboardH:'Où commence votre <span class="g">voyage ?</span>',
@@ -399,7 +402,7 @@ const I18N={
     noplace:'Aucun lieu trouvé',searcherr:'Erreur de recherche',bce:'av. J.-C.'},
   ja:{tagline:'地理でめぐる知識',search:'場所を検索…',explore:'発見',sat:'衛星',
     timeline:'年表',vnonly:'ベトナム',
-    legCity:'都市',legHist:'歴史',legCult:'文化',legNat:'自然',legSci:'科学',
+    legCity:'都市',legHist:'歴史',legCult:'文化',legNat:'自然',legSci:'科学',legPpl:'人物',
     nearby:'周辺',shared:'リンクをコピーしました',
     hint:HINT('金 = 都市','橙 = 名所','回して<b>ズーム</b>すると記事が見えます'),
     onboardH:'旅の出発点は<span class="g">どこ？</span>',
@@ -498,7 +501,7 @@ map.on('load',()=>{
     paint:{'text-color':'#2a1c05'}});
   // knowledge themes: history=coral, culture=violet, nature=green, science=blue, city=gold
   const THEME_COLOR=['match',['get','theme'],
-    'h','#cc785c','c','#b98bdb','n','#6fb98f','s','#5aa9d6','#ffd479'];
+    'h','#cc785c','c','#b98bdb','n','#6fb98f','s','#5aa9d6','p','#e98aa6','#ffd479'];
   map.addLayer({id:'cities-glow',type:'circle',source:'cities',filter:['!',['has','point_count']],
     layout:{visibility:'none'},
     paint:{'circle-color':THEME_COLOR,'circle-radius':13,'circle-opacity':.13}});
@@ -511,6 +514,7 @@ map.on('load',()=>{
 
   CITIES=(window.WIKIGLOBE_CITIES&&window.WIKIGLOBE_CITIES.cities)||[];
   PLACES=(window.WIKIGLOBE_PLACES&&window.WIKIGLOBE_PLACES.places)||[];
+  PEOPLE=(window.WIKIGLOBE_PEOPLE&&window.WIKIGLOBE_PEOPLE.people)||[];
   refreshGlobalTier();
 
   /* ----- time tier: dated historical events, colored by era ----- */
@@ -606,6 +610,7 @@ function applyI18n(){
   document.querySelector('#legend .l-cult').textContent=t('legCult');
   document.querySelector('#legend .l-nat').textContent=t('legNat');
   document.querySelector('#legend .l-sci').textContent=t('legSci');
+  document.querySelector('#legend .l-ppl').textContent=t('legPpl');
   document.getElementById('vntoggle').innerHTML=
     '<img class="vnflag" src="https://flagcdn.com/vn.svg" alt="VN">'+t('vnonly');
   document.getElementById('hint').innerHTML='🌍 '+t('hint');
@@ -629,7 +634,7 @@ const setVis=(ids,on)=>ids.forEach(id=>
   map.getLayer(id)&&map.setLayoutProperty(id,'visibility',on?'visible':'none'));
 
 let lastGlobalCount=0;
-const activeThemes=new Set(['city','h','c','n','s']);   // knowledge lenses (legend toggles)
+const activeThemes=new Set(['city','h','c','n','s','p']);   // knowledge lenses (legend toggles)
 function refreshGlobalTier(){
   if(!map.getSource('cities')) return;
   const feats=[];
@@ -644,6 +649,7 @@ function refreshGlobalTier(){
   };
   add(CITIES,'city');     // settlements
   add(PLACES,null);       // theme from the dataset (history/culture/nature/science)
+  add(PEOPLE,'p');        // notable people at their birthplace
   lastGlobalCount=feats.length;
   map.getSource('cities').setData({type:'FeatureCollection',features:feats});
 }
