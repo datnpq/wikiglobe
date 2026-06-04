@@ -61,7 +61,7 @@
   #count{pointer-events:auto;font-size:12px;color:var(--muted);background:var(--panel);white-space:nowrap;
     border:1px solid var(--line);border-radius:999px;padding:6px 12px;backdrop-filter:blur(10px)}
   /* when the article panel is open on desktop, slide the top-bar controls clear of it */
-  #bar{transition:padding-right .35s cubic-bezier(.4,0,.2,1)}
+  #bar{transition:padding .35s cubic-bezier(.4,0,.2,1)}
   @media(min-width:760px){ body.panelopen #bar{padding-right:calc(min(420px,92vw) + 30px)} }
 
   /* search */
@@ -86,11 +86,11 @@
   #results .row.msg{color:var(--muted);cursor:default}
 
   /* time-mode toggle (top bar) */
-  #timetoggle,#satbtn,#heatbtn,#evbtn,#surprise{all:unset;pointer-events:auto;cursor:pointer;font-size:12.5px;
+  #timetoggle,#satbtn,#heatbtn,#evbtn,#nearbtn,#surprise{all:unset;pointer-events:auto;cursor:pointer;font-size:12.5px;
     font-weight:600;color:var(--muted);background:var(--panel);border:1px solid var(--line);
     border-radius:999px;padding:7px 13px;backdrop-filter:blur(10px);transition:.15s;white-space:nowrap;
     display:inline-flex;align-items:center;gap:6px}
-  #timetoggle.on,#satbtn.on,#heatbtn.on,#surprise:hover{color:#fff;
+  #timetoggle.on,#satbtn.on,#heatbtn.on,#nearbtn.on,#nearbtn:hover,#surprise:hover{color:#fff;
     background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent}
   #evbtn.on{color:#fff;background:linear-gradient(135deg,#16c784,#0f9d63);border-color:transparent}
 
@@ -242,6 +242,32 @@
   .evstatus.ok{color:#0a7d52;background:rgba(22,199,132,.18)}
   .evstatus.na{color:#b4543a;background:rgba(204,80,60,.16)}
 
+  /* "around me": user marker + nearest-stations list (left panel) */
+  .wg-here{width:16px;height:16px;border-radius:50%;background:#2f6fff;cursor:default;
+    box-shadow:0 0 0 3px #fff,0 0 0 6px rgba(47,111,255,.32),0 0 16px #2f6fff}
+  #evlist{position:absolute;z-index:6;top:0;left:0;height:100%;width:min(336px,86vw);
+    background:var(--panel);border-right:1px solid var(--line);backdrop-filter:blur(16px);
+    transform:translateX(-105%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+    display:flex;flex-direction:column;box-shadow:20px 0 60px rgba(0,0,0,.4)}
+  #evlist.open{transform:none}
+  #evlist .eh{flex:none;padding:16px 16px 12px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;gap:8px}
+  #evlist .eht{font-family:var(--serif);font-size:17px;font-weight:600;color:var(--txt)}
+  #evlist .ehx{all:unset;cursor:pointer;width:28px;height:28px;border-radius:50%;text-align:center;
+    line-height:28px;color:var(--muted);font-size:18px;flex:none}
+  #evlist .ehx:hover{color:var(--accent)}
+  #evlist .erows{overflow:auto;padding:6px;scrollbar-width:thin;scrollbar-color:var(--accent) transparent}
+  .erow{padding:10px 12px;border-radius:11px;cursor:pointer;transition:background .12s;position:relative}
+  .erow:hover{background:rgba(204,120,92,.10)}
+  .erow .en{font-size:13.5px;font-weight:600;color:var(--txt);padding-right:62px;line-height:1.25}
+  .erow .em{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .erow .em .dist{font-weight:700;color:var(--accent)}
+  .erow .es{position:absolute;top:11px;right:11px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px}
+  .erow .es.ok{color:#0a7d52;background:rgba(22,199,132,.18)}
+  .erow .es.na{color:#b4543a;background:rgba(204,80,60,.16)}
+  @media(min-width:760px){ body.evlistopen #bar{padding-left:calc(min(336px,86vw) + 20px)} }
+  @media(max-width:620px){ #evlist{width:88vw} }
+
   /* pulse marker on the selected article */
   .wg-pulse{width:13px;height:13px;border-radius:50%;background:var(--accent);cursor:pointer;
     box-shadow:0 0 0 2px #fff8}
@@ -270,8 +296,8 @@
   @media(max-width:1180px){
     #brand small{display:none}
     #search{flex:1 1 80px;min-width:0}
-    #surprise .lbl,#satbtn .lbl,#heatbtn .lbl,#evbtn .lbl,#timetoggle .lbl{display:none}
-    #surprise,#satbtn,#heatbtn,#evbtn,#timetoggle{padding:8px 11px}
+    #surprise .lbl,#satbtn .lbl,#heatbtn .lbl,#evbtn .lbl,#nearbtn .lbl,#timetoggle .lbl{display:none}
+    #surprise,#satbtn,#heatbtn,#evbtn,#nearbtn,#timetoggle{padding:8px 11px}
     #count{display:none}
   }
   @media(max-width:620px){
@@ -308,6 +334,7 @@
   <button id="satbtn"><span class="ico">🛰</span><span class="lbl"></span></button>
   <button id="heatbtn" title="Bản đồ mật độ tri thức"><span class="ico">🔥</span><span class="lbl"></span></button>
   <button id="evbtn" title="Trạm sạc xe điện"><span class="ico">⚡</span><span class="lbl"></span></button>
+  <button id="nearbtn" title="Trạm sạc quanh tôi"><span class="ico">📍</span><span class="lbl"></span></button>
   <button id="timetoggle"><span class="ico">🕰</span><span class="lbl"></span></button>
   <div id="count">Đang chờ…</div>
   <div class="pill" id="lang">
@@ -349,6 +376,11 @@
 </div>
 
 <div id="tip"><div class="t"></div><img alt=""></div>
+
+<aside id="evlist">
+  <div class="eh"><span class="eht">📍</span><button class="ehx" title="Đóng">×</button></div>
+  <div class="erows"></div>
+</aside>
 
 <aside id="panel">
   <button id="close">×</button>
@@ -406,6 +438,7 @@ const I18N={
     evstation:'Trạm sạc xe điện',evconn:'Cổng sạc',evpower:'Công suất',evcap:'Số chỗ',evports:'Số cổng',
     evfee:'Phí',evfree:'Miễn phí',evpaid:'Trả phí',evchecked:'Cập nhật',
     evnodata:'Chưa có thông tin chi tiết',evdir:'Chỉ đường',evsrc:'Nguồn: OpenStreetMap',
+    near:'Quanh tôi',evnear:'{n} trạm quanh bạn',geoerr:'Không lấy được vị trí của bạn',
     featuredToday:'Nổi bật hôm nay'},
   en:{tagline:'knowledge by geography',search:'Search a place…',explore:'Discover',sat:'Satellite',heat:'Density',
     timeline:'Timeline',vnonly:'VN only',
@@ -425,6 +458,7 @@ const I18N={
     evstation:'EV charging station',evconn:'Connectors',evpower:'Power',evcap:'Bays',evports:'Ports',
     evfee:'Fee',evfree:'Free',evpaid:'Paid',evchecked:'Verified',
     evnodata:'No detailed information yet',evdir:'Directions',evsrc:'Source: OpenStreetMap',
+    near:'Near me',evnear:'{n} stations near you',geoerr:'Could not get your location',
     featuredToday:'Today’s highlight'},
   fr:{tagline:'le savoir par la géographie',search:'Rechercher un lieu…',explore:'Explorer',
     sat:'Satellite',heat:'Densité',timeline:'Chronologie',vnonly:'Viêt Nam',
@@ -444,6 +478,7 @@ const I18N={
     evstation:'Borne de recharge',evconn:'Connecteurs',evpower:'Puissance',evcap:'Places',evports:'Bornes',
     evfee:'Tarif',evfree:'Gratuit',evpaid:'Payant',evchecked:'Vérifié',
     evnodata:'Pas encore de détails',evdir:'Itinéraire',evsrc:'Source : OpenStreetMap',
+    near:'Autour de moi',evnear:'{n} bornes près de vous',geoerr:'Localisation impossible',
     featuredToday:'À la une aujourd’hui'},
   ja:{tagline:'地理でめぐる知識',search:'場所を検索…',explore:'発見',sat:'衛星',heat:'密度',
     timeline:'年表',vnonly:'ベトナム',
@@ -463,6 +498,7 @@ const I18N={
     evstation:'EV充電ステーション',evconn:'コネクタ',evpower:'出力',evcap:'台数',evports:'ポート数',
     evfee:'料金',evfree:'無料',evpaid:'有料',evchecked:'確認日',
     evnodata:'詳細情報はまだありません',evdir:'経路案内',evsrc:'出典: OpenStreetMap',
+    near:'周辺',evnear:'周辺に {n} 件',geoerr:'位置情報を取得できません',
     featuredToday:'今日の注目'},
 };
 const t =(k)=> (I18N[LANG]||I18N.vi)[k];
@@ -703,6 +739,7 @@ function applyI18n(){
   document.querySelector('#satbtn .lbl').textContent=t('sat');
   document.querySelector('#heatbtn .lbl').textContent=t('heat');
   document.querySelector('#evbtn .lbl').textContent=t('ev');
+  document.querySelector('#nearbtn .lbl').textContent=t('near');
   document.querySelector('#timetoggle .lbl').textContent=t('timeline');
   document.querySelector('#legend .l-city').textContent=t('legCity');
   document.querySelector('#legend .l-hist').textContent=t('legHist');
@@ -1271,6 +1308,7 @@ async function loadEV(){
       type:'Feature',geometry:{type:'Point',coordinates:[st.lon,st.lat]},properties:st}));
     map.getSource('ev').setData({type:'FeatureCollection',features:feats});
     count.textContent=tf('evcount',feats.length);
+    lastEvStations=stations; if(nearbyMode) renderNearby();   // refresh "around me" list
   }catch(err){ if(my===evReq && err.name!=='AbortError') count.textContent=t('neterr'); }
 }
 async function fetchProxy(s,w,n,e,signal){       // Cloudflare Worker → normalised {stations}
@@ -1314,10 +1352,66 @@ function setEvMode(on){
     if(map.getSource('ev')) map.getSource('ev').setData(EMPTY);
     document.getElementById('hint').innerHTML='🌍 '+t('hint');
     lg.style.opacity=1; lg.style.pointerEvents='auto';
+    nearbyMode=false; closeNearby();
     updateTiers();
   }
 }
 evbtn.onclick=()=>setEvMode(!evOn);
+
+/* ---------- "around me": geolocation + nearest-stations list ---------- */
+const nearbtn=document.getElementById('nearbtn');
+const evlist=document.getElementById('evlist');
+let userLoc=null, nearbyMode=false, lastEvStations=[], nearbyList=[];
+const hereEl=document.createElement('div'); hereEl.className='wg-here';
+const hereMarker=new maplibregl.Marker({element:hereEl}); let hereOn=false;
+function distKm(la1,lo1,la2,lo2){
+  const R=6371,d=Math.PI/180;
+  const a=Math.sin((la2-la1)*d/2)**2+Math.cos(la1*d)*Math.cos(la2*d)*Math.sin((lo2-lo1)*d/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+function locateMe(){
+  if(!navigator.geolocation){ document.getElementById('count').textContent=t('geoerr'); return; }
+  nearbtn.classList.add('on');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    userLoc=[pos.coords.longitude,pos.coords.latitude];
+    hereMarker.setLngLat(userLoc).addTo(map); hereOn=true;
+    nearbyMode=true;
+    if(!evOn) setEvMode(true);
+    exitOrbit();
+    cinematic(userLoc,13,0);            // fly to me → moveend → loadEV → renderNearby
+  },()=>{ nearbtn.classList.remove('on'); document.getElementById('count').textContent=t('geoerr'); },
+  {enableHighAccuracy:true,timeout:10000,maximumAge:60000});
+}
+nearbtn.onclick=()=>{ if(nearbyMode){ closeNearby(); } else locateMe(); };
+const escH=s=>String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+function renderNearby(){
+  if(!userLoc||!nearbyMode) return;
+  nearbyList=lastEvStations.map(st=>({st,d:distKm(userLoc[1],userLoc[0],st.lat,st.lon)}))
+    .sort((a,b)=>a.d-b.d).slice(0,20);
+  evlist.querySelector('.eht').innerHTML='📍 '+tf('evnear',nearbyList.length);
+  evlist.querySelector('.erows').innerHTML=nearbyList.map(({st,d},i)=>{
+    const ok=/avail|oper/i.test(st.status);
+    const bits=[];
+    if(st.operator) bits.push(escH(st.operator));
+    if(st.power) bits.push(escH(st.power)); else if(st.ports) bits.push(escH(st.ports));
+    if(st.conn) bits.push(escH(st.conn));
+    const dist=`<span class="dist">${d<10?d.toFixed(1):Math.round(d)} km</span>`;
+    return `<div class="erow" data-i="${i}"><div class="en">${escH(st.title||t('evstation'))}</div>`+
+      `<div class="em">${bits.join(' · ')}${bits.length?' · ':''}${dist}</div>`+
+      `${st.status?`<span class="es ${ok?'ok':'na'}">${escH(st.status)}</span>`:''}</div>`;
+  }).join('') || `<div style="padding:20px;color:var(--muted);font-size:13px">${t('noart')}</div>`;
+  evlist.classList.add('open'); document.body.classList.add('evlistopen');
+}
+function closeNearby(){
+  nearbyMode=false; evlist.classList.remove('open'); document.body.classList.remove('evlistopen');
+  nearbtn.classList.remove('on'); if(hereOn){ hereMarker.remove(); hereOn=false; }
+}
+evlist.querySelector('.erows').addEventListener('click',e=>{
+  const row=e.target.closest('.erow'); if(!row) return;
+  const item=nearbyList[+row.dataset.i]; if(!item) return;
+  openStation(item.st,[item.st.lon,item.st.lat]);
+});
+evlist.querySelector('.ehx').onclick=closeNearby;
 
 /* ---------- "✨ Khám phá": cinematic jump to a random notable place ---------- */
 const surpriseBtn=document.getElementById('surprise');

@@ -39,6 +39,7 @@ const STALE_MS = 60 * 24 * 3600 * 1000;    // beyond this → treat as missing (
 const MAX_TILES = 16;                      // cap tiles fetched per viewport request
 const AFDC_BUDGET = 900;                   // monthly AFDC call ceiling (free plan ~1000)
 const CRON_CAP = 40;                       // max tiles refreshed per cron run
+const CACHE_V = 1;                          // bump to invalidate every tile (e.g. when adding OCM)
 
 export default {
   async fetch(req, env, ctx) {
@@ -71,7 +72,7 @@ export default {
 
     const perTile = await Promise.all(tiles.map(async (tile) => {
       const src = sourceForTile(tile);
-      const key = `ev:${src}:${tile.tx}:${tile.ty}`;
+      const key = `ev:v${CACHE_V}:${src}:${tile.tx}:${tile.ty}`;
       const raw = await env.EV_CACHE.get(key, 'json');
       const age = raw ? now - raw.t : Infinity;
 
@@ -149,14 +150,14 @@ async function cronRefresh(env) {
   if (!env.EV_CACHE) return;
   let quota = await quotaGet(env);
   if (quota >= AFDC_BUDGET) return;
-  const { keys } = await env.EV_CACHE.list({ prefix: 'ev:afdc:' });
+  const { keys } = await env.EV_CACHE.list({ prefix: `ev:v${CACHE_V}:afdc:` });
   const now = Date.now(); let spent = 0;
   for (const k of keys) {
     if (quota + spent >= AFDC_BUDGET || spent >= CRON_CAP) break;
     const raw = await env.EV_CACHE.get(k.name, 'json');
     if (!raw || now - raw.t < FRESH_MS) continue;            // still fresh → skip
-    const [, , txs, tys] = k.name.split(':');
-    const tx = +txs, ty = +tys;
+    const p = k.name.split(':');                             // ev:v1:afdc:tx:ty
+    const tx = +p[3], ty = +p[4];
     const tile = { tx, ty, s: ty * TILE, w: tx * TILE, n: (ty + 1) * TILE, e: (tx + 1) * TILE };
     try {
       const stations = await fetchSource('afdc', tile, env);
@@ -175,7 +176,45 @@ async function fetchSource(src, tile, env) {
     const radius = Math.min(80000, Math.round(haversine(lat, lon, tile.n, tile.e)));
     return afdcFetch(lat, lon, radius, env);
   }
-  return osmFetch(tile.s, tile.w, tile.n, tile.e);
+  // non-US: merge OpenChargeMap (rich: kW, operator, status) + OSM, dedupe ~100m
+  const ocm = env.OCM_KEY ? await ocmFetch(tile.s, tile.w, tile.n, tile.e, env).catch(() => null) : null;
+  const osm = await osmFetch(tile.s, tile.w, tile.n, tile.e).catch(() => null);
+  if (ocm === null && osm === null) throw new Error('sources unavailable');
+  return dedupe([...(ocm || []), ...(osm || [])]);   // OCM first → wins on a duplicate
+}
+function dedupe(list) {
+  const seen = new Map();
+  for (const st of list) {
+    const k = st.lat.toFixed(3) + ',' + st.lon.toFixed(3);   // ~100 m grid
+    if (!seen.has(k)) seen.set(k, st);
+  }
+  return [...seen.values()];
+}
+
+/* OpenChargeMap — richer EV data (power kW, operator, connections, status) */
+async function ocmFetch(s, w, n, e, env) {
+  const bb = `(${n},${w}),(${s},${e})`;
+  const u = `https://api.openchargemap.io/v3/poi?output=json&boundingbox=${encodeURIComponent(bb)}` +
+    `&maxresults=200&compact=true&verbose=false&key=${env.OCM_KEY}`;
+  const r = await fetch(u, { headers: { 'User-Agent': 'WikiGlobe/1.0 (+https://datnpq.github.io/wikiglobe/)' } });
+  if (!r.ok) throw new Error('ocm ' + r.status);
+  const arr = await r.json();
+  return (arr || []).filter((p) => p.AddressInfo).map((p) => {
+    const ai = p.AddressInfo, conns = [];
+    for (const c of (p.Connections || [])) if (c.ConnectionType && c.ConnectionType.Title) conns.push(c.ConnectionType.Title);
+    const kw = Math.max(0, ...(p.Connections || []).map((c) => c.PowerKW || 0));
+    return {
+      id: 'ocm' + p.ID, lat: ai.Latitude, lon: ai.Longitude,
+      title: ai.Title || '', operator: (p.OperatorInfo && p.OperatorInfo.Title) || '',
+      network: (p.OperatorInfo && p.OperatorInfo.Title) || '',
+      status: (p.StatusType && p.StatusType.Title) || '',
+      conn: [...new Set(conns)].join(' · '), ports: p.NumberOfPoints ? '×' + p.NumberOfPoints : '',
+      power: kw ? kw + ' kW' : '',
+      fee: p.UsageCost || '', access: '', website: (p.OperatorInfo && p.OperatorInfo.WebsiteURL) || '',
+      address: [ai.AddressLine1, ai.Town].filter(Boolean).join(', '),
+      checkdate: (p.DateLastStatusUpdate || '').slice(0, 10),
+    };
+  }).filter((st) => isFinite(st.lat) && isFinite(st.lon));
 }
 
 async function afdcFetch(lat, lon, radius, env) {
