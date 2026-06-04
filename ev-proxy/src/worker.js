@@ -39,7 +39,7 @@ const STALE_MS = 60 * 24 * 3600 * 1000;    // beyond this → treat as missing (
 const MAX_TILES = 16;                      // cap tiles fetched per viewport request
 const AFDC_BUDGET = 900;                   // monthly AFDC call ceiling (free plan ~1000)
 const CRON_CAP = 40;                       // max tiles refreshed per cron run
-const CACHE_V = 1;                          // bump to invalidate every tile (e.g. when adding OCM)
+const CACHE_V = 2;                          // bump to invalidate every tile (e.g. when adding OCM)
 
 export default {
   async fetch(req, env, ctx) {
@@ -195,7 +195,7 @@ function dedupe(list) {
 async function ocmFetch(s, w, n, e, env) {
   const bb = `(${n},${w}),(${s},${e})`;
   const u = `https://api.openchargemap.io/v3/poi?output=json&boundingbox=${encodeURIComponent(bb)}` +
-    `&maxresults=200&compact=true&verbose=false&key=${env.OCM_KEY}`;
+    `&maxresults=200&compact=true&verbose=true&key=${env.OCM_KEY}`; // verbose → operator/connector titles
   const r = await fetch(u, { headers: { 'User-Agent': 'WikiGlobe/1.0 (+https://datnpq.github.io/wikiglobe/)' } });
   if (!r.ok) throw new Error('ocm ' + r.status);
   const arr = await r.json();
