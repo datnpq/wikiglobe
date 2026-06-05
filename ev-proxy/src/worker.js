@@ -39,12 +39,13 @@ const STALE_MS = 60 * 24 * 3600 * 1000;    // beyond this → treat as missing (
 const MAX_TILES = 16;                      // cap tiles fetched per viewport request
 const AFDC_BUDGET = 900;                   // monthly AFDC call ceiling (free plan ~1000)
 const CRON_CAP = 40;                       // max tiles refreshed per cron run
-const CACHE_V = 2;                          // bump to invalidate every tile (e.g. when adding OCM)
+const CACHE_V = 3;                          // bump to invalidate every tile (e.g. when adding OCM)
 
 export default {
   async fetch(req, env, ctx) {
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     const url = new URL(req.url);
+    if (url.pathname.endsWith('/availability')) return availability(url, env, ctx);
     if (!url.pathname.endsWith('/stations')) return json({ error: 'not found' }, 404);
 
     const bbox = (url.searchParams.get('bbox') || '').split(',').map(Number);
@@ -176,11 +177,73 @@ async function fetchSource(src, tile, env) {
     const radius = Math.min(80000, Math.round(haversine(lat, lon, tile.n, tile.e)));
     return afdcFetch(lat, lon, radius, env);
   }
-  // non-US: merge OpenChargeMap (rich: kW, operator, status) + OSM, dedupe ~100m
-  const ocm = env.OCM_KEY ? await ocmFetch(tile.s, tile.w, tile.n, tile.e, env).catch(() => null) : null;
-  const osm = await osmFetch(tile.s, tile.w, tile.n, tile.e).catch(() => null);
-  if (ocm === null && osm === null) throw new Error('sources unavailable');
-  return dedupe([...(ocm || []), ...(osm || [])]);   // OCM first → wins on a duplicate
+  // non-US: TomTom (richest: connectors+power+count+realtime id) + OpenChargeMap + OSM
+  const [tt, ocm, osm] = await Promise.all([
+    env.TOMTOM_KEY ? ttFetch(tile.s, tile.w, tile.n, tile.e, env).catch(() => null) : Promise.resolve(null),
+    env.OCM_KEY ? ocmFetch(tile.s, tile.w, tile.n, tile.e, env).catch(() => null) : Promise.resolve(null),
+    osmFetch(tile.s, tile.w, tile.n, tile.e).catch(() => null),
+  ]);
+  if (tt === null && ocm === null && osm === null) throw new Error('sources unavailable');
+  return dedupe([...(tt || []), ...(ocm || []), ...(osm || [])]);  // TomTom first → richest wins
+}
+
+/* TomTom EV Search — richest static data (typed connectors, kW, count) + a realtime id */
+const TT_CONN = {
+  IEC62196Type2CCS: 'CCS', IEC62196Type2Outlet: 'Type 2', IEC62196Type2CableAttached: 'Type 2',
+  IEC62196Type1: 'Type 1', IEC62196Type1CCS: 'CCS1', Chademo: 'CHAdeMO', IEC62196Type3: 'Type 3',
+  Tesla: 'Tesla', GBT20234Part2: 'GB/T', GBT20234Part3: 'GB/T', IEC60309AC1PhaseBlue: 'CEE',
+  StandardHouseholdCountrySpecific: 'Socket',
+};
+const ttConn = (t) => TT_CONN[t] || t;
+async function ttFetch(s, w, n, e, env) {
+  const lat = (s + n) / 2, lon = (w + e) / 2;
+  const radius = Math.min(50000, Math.max(2000, Math.round(haversine(lat, lon, n, e))));
+  const u = `https://api.tomtom.com/search/2/nearbySearch/.json?lat=${lat}&lon=${lon}` +
+    `&radius=${radius}&categorySet=7309&limit=100&key=${env.TOMTOM_KEY}`;
+  const r = await fetch(u);
+  if (!r.ok) throw new Error('tomtom ' + r.status);
+  const j = await r.json();
+  return (j.results || []).map((p) => {
+    const cps = (p.chargingPark && p.chargingPark.connectors) || [];
+    const conns = [...new Set(cps.map((c) => ttConn(c.connectorType)))];
+    const kw = Math.max(0, ...cps.map((c) => c.ratedPowerKW || 0));
+    const av = p.dataSources && p.dataSources.chargingAvailability;
+    const brand = p.poi && p.poi.brands && p.poi.brands[0] && p.poi.brands[0].name;
+    return {
+      id: 'tt' + p.id, lat: p.position.lat, lon: p.position.lon,
+      title: (p.poi && p.poi.name) || '', operator: brand || '', network: '', status: '',
+      conn: conns.join(' · '), ports: cps.length ? '×' + cps.length : '', power: kw ? kw + ' kW' : '',
+      fee: '', access: '', website: (p.poi && p.poi.url) || '',
+      address: (p.address && p.address.freeformAddress) || '', checkdate: '',
+      availId: av ? av.id : '',
+    };
+  }).filter((st) => isFinite(st.lat) && isFinite(st.lon));
+}
+
+/* realtime connector availability for one station — short-cached (changes every ~3 min) */
+async function availability(url, env, ctx) {
+  const id = url.searchParams.get('id');
+  if (!id) return json({ error: 'missing id' }, 400);
+  if (!env.TOMTOM_KEY) return json({ error: 'realtime not configured' }, 501);
+  const cacheUrl = new URL(url.origin + url.pathname + '?id=' + id);
+  const cache = caches.default;
+  const hit = await cache.match(cacheUrl);
+  if (hit) return withCors(hit);
+  try {
+    const r = await fetch(`https://api.tomtom.com/search/2/chargingAvailability.json?chargingAvailability=${encodeURIComponent(id)}&key=${env.TOMTOM_KEY}`);
+    if (!r.ok) return json({ error: 'availability ' + r.status }, 502);
+    const j = await r.json();
+    let total = 0, available = 0, occupied = 0, oos = 0;
+    const connectors = (j.connectors || []).map((c) => {
+      const cur = (c.availability && c.availability.current) || {};
+      total += c.total || 0; available += cur.available || 0; occupied += cur.occupied || 0; oos += cur.outOfService || 0;
+      return { type: ttConn(c.type), total: c.total || 0, available: cur.available || 0, occupied: cur.occupied || 0 };
+    });
+    const resp = json({ total, available, occupied, outOfService: oos, connectors }, 200,
+      { 'Cache-Control': 'public, max-age=120' });   // ~2 min, realtime data
+    ctx.waitUntil(cache.put(cacheUrl, resp.clone()));
+    return resp;
+  } catch (e) { return json({ error: String(e) }, 502); }
 }
 function dedupe(list) {
   const seen = new Map();

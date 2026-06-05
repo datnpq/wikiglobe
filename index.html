@@ -241,6 +241,12 @@
   .evstatus{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px}
   .evstatus.ok{color:#0a7d52;background:rgba(22,199,132,.18)}
   .evstatus.na{color:#b4543a;background:rgba(204,80,60,.16)}
+  /* realtime connector availability badge (TomTom) */
+  .evlivewrap:empty{display:none}
+  .evlivewrap{margin:0 0 8px}
+  .evlive{display:inline-block;font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:999px}
+  .evlive.ok{color:#0a7d52;background:rgba(22,199,132,.20)}
+  .evlive.na{color:#b4543a;background:rgba(204,80,60,.18)}
 
   /* "around me": user marker + nearest-stations list (left panel) */
   .wg-here{width:16px;height:16px;border-radius:50%;background:#2f6fff;cursor:default;
@@ -437,7 +443,8 @@ const I18N={
     ev:'Trạm sạc',evzoom:'Zoom vào để xem trạm sạc',evcount:'{n} trạm sạc',
     evstation:'Trạm sạc xe điện',evconn:'Cổng sạc',evpower:'Công suất',evcap:'Số chỗ',evports:'Số cổng',
     evfee:'Phí',evfree:'Miễn phí',evpaid:'Trả phí',evchecked:'Cập nhật',
-    evnodata:'Chưa có thông tin chi tiết',evdir:'Chỉ đường',evsrc:'Nguồn: OpenStreetMap',
+    evnodata:'Chưa có thông tin chi tiết',evdir:'Chỉ đường',evsrc:'Nguồn: TomTom · OpenChargeMap · OSM',
+    evslots:'cổng trống',evrealtime:'cập nhật realtime',
     near:'Quanh tôi',evnear:'{n} trạm quanh bạn',geoerr:'Không lấy được vị trí của bạn',
     featuredToday:'Nổi bật hôm nay'},
   en:{tagline:'knowledge by geography',search:'Search a place…',explore:'Discover',sat:'Satellite',heat:'Density',
@@ -457,7 +464,8 @@ const I18N={
     ev:'EV',evzoom:'Zoom in to see charging stations',evcount:'{n} charging stations',
     evstation:'EV charging station',evconn:'Connectors',evpower:'Power',evcap:'Bays',evports:'Ports',
     evfee:'Fee',evfree:'Free',evpaid:'Paid',evchecked:'Verified',
-    evnodata:'No detailed information yet',evdir:'Directions',evsrc:'Source: OpenStreetMap',
+    evnodata:'No detailed information yet',evdir:'Directions',evsrc:'Source: TomTom · OpenChargeMap · OSM',
+    evslots:'free',evrealtime:'live',
     near:'Near me',evnear:'{n} stations near you',geoerr:'Could not get your location',
     featuredToday:'Today’s highlight'},
   fr:{tagline:'le savoir par la géographie',search:'Rechercher un lieu…',explore:'Explorer',
@@ -477,7 +485,8 @@ const I18N={
     ev:'Bornes',evzoom:'Zoomez pour voir les bornes',evcount:'{n} bornes de recharge',
     evstation:'Borne de recharge',evconn:'Connecteurs',evpower:'Puissance',evcap:'Places',evports:'Bornes',
     evfee:'Tarif',evfree:'Gratuit',evpaid:'Payant',evchecked:'Vérifié',
-    evnodata:'Pas encore de détails',evdir:'Itinéraire',evsrc:'Source : OpenStreetMap',
+    evnodata:'Pas encore de détails',evdir:'Itinéraire',evsrc:'Source : TomTom · OpenChargeMap · OSM',
+    evslots:'libres',evrealtime:'temps réel',
     near:'Autour de moi',evnear:'{n} bornes près de vous',geoerr:'Localisation impossible',
     featuredToday:'À la une aujourd’hui'},
   ja:{tagline:'地理でめぐる知識',search:'場所を検索…',explore:'発見',sat:'衛星',heat:'密度',
@@ -497,7 +506,8 @@ const I18N={
     ev:'充電',evzoom:'ズームして充電器を表示',evcount:'{n} 件の充電ステーション',
     evstation:'EV充電ステーション',evconn:'コネクタ',evpower:'出力',evcap:'台数',evports:'ポート数',
     evfee:'料金',evfree:'無料',evpaid:'有料',evchecked:'確認日',
-    evnodata:'詳細情報はまだありません',evdir:'経路案内',evsrc:'出典: OpenStreetMap',
+    evnodata:'詳細情報はまだありません',evdir:'経路案内',evsrc:'出典: TomTom · OpenChargeMap · OSM',
+    evslots:'空き',evrealtime:'リアルタイム',
     near:'周辺',evnear:'周辺に {n} 件',geoerr:'位置情報を取得できません',
     featuredToday:'今日の注目'},
 };
@@ -975,7 +985,7 @@ async function openArticle(props){
 }
 /* EV charging station detail — reuses the article panel with structured rows */
 function openStation(p,coord){
-  ++openSeq;                                       // cancel any in-flight article fetch
+  const my=++openSeq;                              // cancel any in-flight article fetch
   panel.classList.add('open'); document.body.classList.add('panelopen');
   clearMarker(); pNearby.innerHTML='';
   document.getElementById('hero').style.backgroundImage='linear-gradient(135deg,#0f5132,#16c784)';
@@ -995,13 +1005,23 @@ function openStation(p,coord){
   if(p.fee)      rows.push(`💳 <b>${t('evfee')}:</b> ${p.fee==='no'||/free/i.test(p.fee)?t('evfree'):p.fee==='yes'?t('evpaid'):esc(p.fee)}`);
   if(p.access)   rows.push(`🔒 ${esc(p.access)}`);
   if(p.checkdate)rows.push(`🕓 <b>${t('evchecked')}:</b> ${esc(p.checkdate)}`);
-  let html = rows.length ? rows.map(r=>`<div style="margin:5px 0">${r}</div>`).join('')
-    : `<span style="color:var(--muted)">${t('evnodata')}</span>`;
+  let html = '<div id="ev-live" class="evlivewrap"></div>' +
+    (rows.length ? rows.map(r=>`<div style="margin:5px 0">${r}</div>`).join('')
+    : `<span style="color:var(--muted)">${t('evnodata')}</span>`);
   if(p.website){ const u=esc(p.website.replace(/^https?:\/\//,'').replace(/\/$/,''));
     html+=`<div style="margin:10px 0 0"><a href="${esc(p.website)}" target="_blank" rel="noopener" `+
       `style="color:var(--accent)">🌐 ${u}</a></div>`; }
   html+=`<div style="margin:12px 0 0;font-size:11.5px;color:var(--muted)">${t('evsrc')}</div>`;
   document.getElementById('p-extract').innerHTML=html;
+  // realtime connector availability (only where the provider has a live id — e.g. EU/US)
+  if(p.availId && EV_PROXY){
+    fetch(`${EV_PROXY}/availability?id=${encodeURIComponent(p.availId)}`).then(r=>r.json()).then(a=>{
+      if(my!==openSeq) return;
+      const box=document.getElementById('ev-live'); if(!box||!a||!isFinite(a.available)||!a.total) return;
+      const ok=a.available>0;
+      box.innerHTML=`<span class="evlive ${ok?'ok':'na'}">⚡ ${a.available}/${a.total} ${t('evslots')} · ${t('evrealtime')}</span>`;
+    }).catch(()=>{});
+  }
   const link=document.getElementById('p-link');
   link.href=`https://www.google.com/maps/dir/?api=1&destination=${coord[1]},${coord[0]}`;
   link.textContent='🧭 '+t('evdir');
