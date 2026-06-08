@@ -86,13 +86,32 @@
   #results .row.msg{color:var(--muted);cursor:default}
 
   /* time-mode toggle (top bar) */
-  #timetoggle,#satbtn,#heatbtn,#evbtn,#nearbtn,#surprise{all:unset;pointer-events:auto;cursor:pointer;font-size:12.5px;
-    font-weight:600;color:var(--muted);background:var(--panel);border:1px solid var(--line);
-    border-radius:999px;padding:7px 13px;backdrop-filter:blur(10px);transition:.15s;white-space:nowrap;
-    display:inline-flex;align-items:center;gap:6px}
-  #timetoggle.on,#satbtn.on,#heatbtn.on,#nearbtn.on,#nearbtn:hover,#surprise:hover{color:#fff;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent}
-  #evbtn.on{color:#fff;background:linear-gradient(135deg,#16c784,#0f9d63);border-color:transparent}
+  /* single tools launcher in the bar */
+  #menubtn{all:unset;pointer-events:auto;cursor:pointer;font-size:13px;font-weight:600;color:var(--txt);
+    background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 14px;
+    backdrop-filter:blur(10px);transition:.15s;white-space:nowrap;display:inline-flex;align-items:center;gap:7px}
+  #menubtn:hover{border-color:var(--accent)}
+  #menubtn .ico{font-size:15px}
+  /* tools menu (open one feature at a time → less clutter, less lag) */
+  #menu{position:absolute;z-index:9;top:62px;right:14px;width:min(288px,calc(100vw - 28px));
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(16px);
+    box-shadow:0 22px 60px rgba(0,0,0,.5);padding:8px;display:none;flex-direction:column;gap:3px}
+  #menu.open{display:flex}
+  #menu .mhead{display:flex;align-items:center;justify-content:space-between;padding:6px 8px 9px;
+    border-bottom:1px solid var(--line);margin-bottom:5px}
+  #menu .mht{font-family:var(--serif);font-size:16px;font-weight:600;color:var(--txt)}
+  #menu .mhx{all:unset;cursor:pointer;color:var(--muted);font-size:18px;width:26px;height:26px;
+    text-align:center;line-height:26px;border-radius:50%}
+  #menu .mhx:hover{color:var(--accent)}
+  .mitem{all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:11px 12px;
+    border-radius:11px;font-size:14px;font-weight:600;color:var(--txt);transition:background .12s}
+  .mitem:hover{background:rgba(204,120,92,.10)}
+  .mitem .ico{font-size:17px;width:22px;text-align:center;flex:none}
+  .mitem .lbl{display:inline!important}
+  .mitem.on{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+  #evbtn.on{background:linear-gradient(135deg,#16c784,#0f9d63);color:#fff}
+  .mlang{display:flex;align-items:center;gap:10px;padding:9px 8px 4px;border-top:1px solid var(--line);margin-top:5px}
+  .mlang .mll{font-size:16px}
 
   /* onboarding: pick a country */
   #onboard{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
@@ -312,7 +331,9 @@
     #brand{font-size:18px}
     .pill button{padding:6px 9px;font-size:12px}
     #hint{display:none}
-    #legend{left:50%;transform:translateX(-50%);bottom:16px;max-width:94vw;justify-content:center}
+    #menubtn .lbl{display:none}              /* icon-only launcher on phones */
+    #menubtn{padding:9px 11px}
+    #legend{display:none}                    /* declutter: theme filter is desktop-only */
   }
 </style>
 </head>
@@ -336,18 +357,26 @@
     <div id="results"></div>
   </div>
   <div class="spacer"></div>
-  <button id="surprise" title="Bay tới một địa danh bất ngờ"><span class="ico">✨</span><span class="lbl"></span></button>
-  <button id="satbtn"><span class="ico">🛰</span><span class="lbl"></span></button>
-  <button id="heatbtn" title="Bản đồ mật độ tri thức"><span class="ico">🔥</span><span class="lbl"></span></button>
-  <button id="evbtn" title="Trạm sạc xe điện"><span class="ico">⚡</span><span class="lbl"></span></button>
-  <button id="nearbtn" title="Trạm sạc quanh tôi"><span class="ico">📍</span><span class="lbl"></span></button>
-  <button id="timetoggle"><span class="ico">🕰</span><span class="lbl"></span></button>
   <div id="count">Đang chờ…</div>
-  <div class="pill" id="lang">
-    <button data-lang="vi" class="on">VI</button>
-    <button data-lang="en">EN</button>
-    <button data-lang="fr">FR</button>
-    <button data-lang="ja">日本</button>
+  <button id="menubtn" title="Công cụ"><span class="ico">☰</span><span class="lbl"></span></button>
+</div>
+
+<div id="menu">
+  <div class="mhead"><span class="mht"></span><button class="mhx" title="Đóng">×</button></div>
+  <button class="mitem" id="exploreItem"><span class="ico">🔭</span><span class="lbl"></span></button>
+  <button class="mitem" id="heatbtn" title="Bản đồ mật độ tri thức"><span class="ico">🔥</span><span class="lbl"></span></button>
+  <button class="mitem" id="timetoggle"><span class="ico">🕰</span><span class="lbl"></span></button>
+  <button class="mitem" id="evbtn" title="Trạm sạc xe điện"><span class="ico">⚡</span><span class="lbl"></span></button>
+  <button class="mitem" id="nearbtn" title="Trạm sạc quanh tôi"><span class="ico">📍</span><span class="lbl"></span></button>
+  <button class="mitem" id="surprise" title="Bay tới một địa danh bất ngờ"><span class="ico">✨</span><span class="lbl"></span></button>
+  <button class="mitem" id="satbtn"><span class="ico">🛰</span><span class="lbl"></span></button>
+  <div class="mlang"><span class="mll">🌐</span>
+    <div class="pill" id="lang">
+      <button data-lang="vi" class="on">VI</button>
+      <button data-lang="en">EN</button>
+      <button data-lang="fr">FR</button>
+      <button data-lang="ja">日本</button>
+    </div>
   </div>
 </div>
 
@@ -446,6 +475,7 @@ const I18N={
     evnodata:'Chưa có thông tin chi tiết',evdir:'Chỉ đường',evsrc:'Nguồn: TomTom · OpenChargeMap · OSM',
     evslots:'cổng trống',evrealtime:'cập nhật realtime',
     near:'Quanh tôi',evnear:'{n} trạm quanh bạn',geoerr:'Không lấy được vị trí của bạn',
+    tools:'Công cụ',knowledge:'Khám phá tri thức',
     featuredToday:'Nổi bật hôm nay'},
   en:{tagline:'knowledge by geography',search:'Search a place…',explore:'Discover',sat:'Satellite',heat:'Density',
     timeline:'Timeline',vnonly:'VN only',
@@ -467,6 +497,7 @@ const I18N={
     evnodata:'No detailed information yet',evdir:'Directions',evsrc:'Source: TomTom · OpenChargeMap · OSM',
     evslots:'free',evrealtime:'live',
     near:'Near me',evnear:'{n} stations near you',geoerr:'Could not get your location',
+    tools:'Tools',knowledge:'Explore knowledge',
     featuredToday:'Today’s highlight'},
   fr:{tagline:'le savoir par la géographie',search:'Rechercher un lieu…',explore:'Explorer',
     sat:'Satellite',heat:'Densité',timeline:'Chronologie',vnonly:'Viêt Nam',
@@ -488,6 +519,7 @@ const I18N={
     evnodata:'Pas encore de détails',evdir:'Itinéraire',evsrc:'Source : TomTom · OpenChargeMap · OSM',
     evslots:'libres',evrealtime:'temps réel',
     near:'Autour de moi',evnear:'{n} bornes près de vous',geoerr:'Localisation impossible',
+    tools:'Outils',knowledge:'Explorer',
     featuredToday:'À la une aujourd’hui'},
   ja:{tagline:'地理でめぐる知識',search:'場所を検索…',explore:'発見',sat:'衛星',heat:'密度',
     timeline:'年表',vnonly:'ベトナム',
@@ -509,6 +541,7 @@ const I18N={
     evnodata:'詳細情報はまだありません',evdir:'経路案内',evsrc:'出典: TomTom · OpenChargeMap · OSM',
     evslots:'空き',evrealtime:'リアルタイム',
     near:'周辺',evnear:'周辺に {n} 件',geoerr:'位置情報を取得できません',
+    tools:'ツール',knowledge:'知識を探索',
     featuredToday:'今日の注目'},
 };
 const t =(k)=> (I18N[LANG]||I18N.vi)[k];
@@ -750,6 +783,9 @@ function applyI18n(){
   document.querySelector('#heatbtn .lbl').textContent=t('heat');
   document.querySelector('#evbtn .lbl').textContent=t('ev');
   document.querySelector('#nearbtn .lbl').textContent=t('near');
+  document.querySelector('#menubtn .lbl').textContent=t('tools');
+  document.querySelector('#menu .mht').textContent=t('tools');
+  document.querySelector('#exploreItem .lbl').textContent=t('knowledge');
   document.querySelector('#timetoggle .lbl').textContent=t('timeline');
   document.querySelector('#legend .l-city').textContent=t('legCity');
   document.querySelector('#legend .l-hist').textContent=t('legHist');
@@ -1432,6 +1468,25 @@ evlist.querySelector('.erows').addEventListener('click',e=>{
   openStation(item.st,[item.st.lon,item.st.lat]);
 });
 evlist.querySelector('.ehx').onclick=closeNearby;
+
+/* ---------- tools menu: onboard first, then open one feature at a time ---------- */
+const menu=document.getElementById('menu'), menubtn=document.getElementById('menubtn');
+const closeMenu=()=>menu.classList.remove('open');
+menubtn.onclick=(e)=>{ e.stopPropagation(); menu.classList.toggle('open'); };
+menu.querySelector('.mhx').onclick=closeMenu;
+menu.addEventListener('click',e=>{                  // pick a tool → close (but keep open for language)
+  if(e.target.closest('#lang')) return;
+  if(e.target.closest('.mitem')) closeMenu();
+});
+document.addEventListener('click',e=>{               // tap outside (incl. the map) → close
+  if(menu.classList.contains('open') && !e.target.closest('#menu') && !e.target.closest('#menubtn')) closeMenu();
+});
+document.getElementById('exploreItem').onclick=()=>{ // reset to the knowledge view
+  if(timeMode) setTimeMode(false);
+  if(evOn) setEvMode(false);
+  if(heatOn){ heatOn=false; document.getElementById('heatbtn').classList.remove('on'); updateTiers(); }
+  exitOrbit();
+};
 
 /* ---------- "✨ Khám phá": cinematic jump to a random notable place ---------- */
 const surpriseBtn=document.getElementById('surprise');
