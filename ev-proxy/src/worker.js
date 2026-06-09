@@ -46,6 +46,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     const url = new URL(req.url);
     if (url.pathname.endsWith('/availability')) return availability(url, env, ctx);
+    if (url.pathname.endsWith('/custommap')) return customMap(url, env, ctx);
     if (!url.pathname.endsWith('/stations')) return json({ error: 'not found' }, 404);
 
     const bbox = (url.searchParams.get('bbox') || '').split(',').map(Number);
@@ -185,6 +186,46 @@ async function fetchSource(src, tile, env) {
   ]);
   if (tt === null && ocm === null && osm === null) throw new Error('sources unavailable');
   return dedupe([...(tt || []), ...(ocm || []), ...(osm || [])]);  // TomTom first → richest wins
+}
+
+/* Community map — import a public Google My Maps (KML) as EV points */
+async function customMap(url, env, ctx) {
+  const mid = url.searchParams.get('mid');
+  if (!mid) return json({ error: 'missing mid' }, 400);
+  const cacheUrl = new URL(url.origin + url.pathname + '?mid=' + mid);
+  const cache = caches.default;
+  const hit = await cache.match(cacheUrl);
+  if (hit) return withCors(hit);
+  const src = `https://www.google.com/maps/d/kml?mid=${encodeURIComponent(mid)}&forcekml=1`;
+  let r;
+  try {
+    r = await fetch(src, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WikiGlobe/1.0; +https://datnpq.github.io/wikiglobe/)' } });
+  } catch (e) { return json({ error: 'fetch failed: ' + e }, 502); }
+  if (!r.ok) return json({ error: 'kml http ' + r.status }, 502);
+  const kml = await r.text();
+  const stations = parseKml(kml);
+  const resp = json({ count: stations.length, stations }, 200, { 'Cache-Control': 'public, max-age=21600' }); // 6 h
+  ctx.waitUntil(cache.put(cacheUrl, resp.clone()));
+  return resp;
+}
+function parseKml(kml) {
+  const out = [];
+  const pms = kml.match(/<Placemark[\s\S]*?<\/Placemark>/g) || [];
+  for (const t of pms) {
+    const co = (t.match(/<coordinates>([\s\S]*?)<\/coordinates>/) || [])[1];
+    if (!co) continue;
+    const [lon, lat] = co.trim().split(/\s+/)[0].split(',').map(Number);
+    if (!isFinite(lon) || !isFinite(lat)) continue;
+    const clean = (s) => (s || '').replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const name = clean((t.match(/<name>([\s\S]*?)<\/name>/) || [])[1]);
+    const desc = clean((t.match(/<description>([\s\S]*?)<\/description>/) || [])[1]).slice(0, 200);
+    out.push({
+      id: 'cm' + lon.toFixed(5) + lat.toFixed(5), lat, lon,
+      title: name || 'Trạm sạc', operator: '', network: 'Cộng đồng', status: '',
+      conn: '', ports: '', power: '', fee: '', access: '', website: '', address: desc, checkdate: '',
+    });
+  }
+  return out;
 }
 
 /* TomTom EV Search — richest static data (typed connectors, kW, count) + a realtime id */

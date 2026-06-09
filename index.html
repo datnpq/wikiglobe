@@ -140,6 +140,12 @@
     background:linear-gradient(135deg,var(--accent),var(--accent2));padding:9px 16px;border-radius:999px}
   #xrlink{color:#fff}
   #xrlink:hover{filter:brightness(1.08)}
+  /* primary "use my location" CTA on entry */
+  #locbtn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:9px;font-size:15.5px;
+    font-weight:700;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    padding:14px 26px;border-radius:999px;box-shadow:0 10px 30px rgba(204,120,92,.38)}
+  #locbtn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+  #locbtn .ico{font-size:18px}
 
   /* time slider (bottom) */
   #timebar{position:absolute;z-index:6;left:50%;bottom:24px;
@@ -343,6 +349,7 @@
 <div id="onboard" class="hide">
   <h2>Bắt đầu hành trình từ <span class="g">đâu?</span></h2>
   <p>Chọn một quốc gia — quả địa cầu sẽ bay tới và xoay quanh nơi đó. Hoặc khám phá tự do.</p>
+  <button id="locbtn"><span class="ico">📍</span><span class="lbl"></span></button>
   <div id="countries"></div>
   <button id="skip">Khám phá tự do →</button>
   <a id="xrlink" href="xr.html">🥽 Mở bản VR — Meta Quest / Pico</a>
@@ -475,7 +482,7 @@ const I18N={
     evnodata:'Chưa có thông tin chi tiết',evdir:'Chỉ đường',evsrc:'Nguồn: TomTom · OpenChargeMap · OSM',
     evslots:'cổng trống',evrealtime:'cập nhật realtime',
     near:'Quanh tôi',evnear:'{n} trạm quanh bạn',geoerr:'Không lấy được vị trí của bạn',
-    tools:'Công cụ',knowledge:'Khám phá tri thức',
+    tools:'Công cụ',knowledge:'Khám phá tri thức',locateCta:'Trạm sạc quanh tôi',
     featuredToday:'Nổi bật hôm nay'},
   en:{tagline:'knowledge by geography',search:'Search a place…',explore:'Discover',sat:'Satellite',heat:'Density',
     timeline:'Timeline',vnonly:'VN only',
@@ -497,7 +504,7 @@ const I18N={
     evnodata:'No detailed information yet',evdir:'Directions',evsrc:'Source: TomTom · OpenChargeMap · OSM',
     evslots:'free',evrealtime:'live',
     near:'Near me',evnear:'{n} stations near you',geoerr:'Could not get your location',
-    tools:'Tools',knowledge:'Explore knowledge',
+    tools:'Tools',knowledge:'Explore knowledge',locateCta:'Charging near me',
     featuredToday:'Today’s highlight'},
   fr:{tagline:'le savoir par la géographie',search:'Rechercher un lieu…',explore:'Explorer',
     sat:'Satellite',heat:'Densité',timeline:'Chronologie',vnonly:'Viêt Nam',
@@ -519,7 +526,7 @@ const I18N={
     evnodata:'Pas encore de détails',evdir:'Itinéraire',evsrc:'Source : TomTom · OpenChargeMap · OSM',
     evslots:'libres',evrealtime:'temps réel',
     near:'Autour de moi',evnear:'{n} bornes près de vous',geoerr:'Localisation impossible',
-    tools:'Outils',knowledge:'Explorer',
+    tools:'Outils',knowledge:'Explorer',locateCta:'Bornes près de moi',
     featuredToday:'À la une aujourd’hui'},
   ja:{tagline:'地理でめぐる知識',search:'場所を検索…',explore:'発見',sat:'衛星',heat:'密度',
     timeline:'年表',vnonly:'ベトナム',
@@ -541,7 +548,7 @@ const I18N={
     evnodata:'詳細情報はまだありません',evdir:'経路案内',evsrc:'出典: TomTom · OpenChargeMap · OSM',
     evslots:'空き',evrealtime:'リアルタイム',
     near:'周辺',evnear:'周辺に {n} 件',geoerr:'位置情報を取得できません',
-    tools:'ツール',knowledge:'知識を探索',
+    tools:'ツール',knowledge:'知識を探索',locateCta:'近くの充電器',
     featuredToday:'今日の注目'},
 };
 const t =(k)=> (I18N[LANG]||I18N.vi)[k];
@@ -786,6 +793,7 @@ function applyI18n(){
   document.querySelector('#menubtn .lbl').textContent=t('tools');
   document.querySelector('#menu .mht').textContent=t('tools');
   document.querySelector('#exploreItem .lbl').textContent=t('knowledge');
+  document.querySelector('#locbtn .lbl').textContent=t('locateCta');
   document.querySelector('#timetoggle .lbl').textContent=t('timeline');
   document.querySelector('#legend .l-city').textContent=t('legCity');
   document.querySelector('#legend .l-hist').textContent=t('legHist');
@@ -1574,6 +1582,7 @@ function initOnboard(){
     flyToCountry(COUNTRIES[+b.dataset.i]);
   });
   document.getElementById('skip').onclick=closeOnboard;
+  document.getElementById('locbtn').onclick=()=>{ closeOnboard(); locateMe(); };  // ask location on entry
   document.getElementById('brand').onclick=openOnboard;   // logo reopens the picker
   if(!START) setTimeout(openOnboard,350);   // shared deep-links skip onboarding
 }
