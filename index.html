@@ -15,6 +15,7 @@
 <script defer src="events.js"></script><!-- dated history index for the time slider -->
 <script defer src="vn-events.js"></script><!-- curated Vietnamese-history backbone -->
 <script defer src="people.js"></script><!-- curated notable people (birthplaces) -->
+<script defer src="community-ev.js"></script><!-- BYD charging map imported from Google My Maps -->
 <style>
   :root{
     /* Anthropic / Claude palette: warm paper, clay-coral accent, editorial serif */
@@ -446,6 +447,7 @@ let LANG = 'vi';
 let CITIES = [];                 // global "civilization" index from cities.js
 let PLACES = [];                 // notable-places index from places.js (mid-zoom density)
 let PEOPLE = [];                 // curated notable people (birthplaces) from people.js
+let COMMUNITY = [];              // community EV stations (BYD map) from community-ev.js
 let EVENTS = [];                 // dated history index from events.js
 let timeMode = false;            // time slider active → globe shows history
 // Wikipedia's geosearch gsbbox caps the box by AREA (~0.033 deg² empirically),
@@ -686,6 +688,7 @@ map.on('load',()=>{
   CITIES=(window.WIKIGLOBE_CITIES&&window.WIKIGLOBE_CITIES.cities)||[];
   PLACES=(window.WIKIGLOBE_PLACES&&window.WIKIGLOBE_PLACES.places)||[];
   PEOPLE=(window.WIKIGLOBE_PEOPLE&&window.WIKIGLOBE_PEOPLE.people)||[];
+  COMMUNITY=window.WIKIGLOBE_COMMUNITY||[];
   refreshGlobalTier();
 
   /* ----- time tier: dated historical events, colored by era ----- */
@@ -1367,12 +1370,21 @@ async function loadEV(){
       ? await fetchProxy(s,w,n,e,evAbort.signal)
       : await fetchOverpass(s,w,n,e,evAbort.signal);
     if(my!==evReq) return;                           // a newer query already ran
-    if(stations===null){ count.textContent=t('neterr'); return; }
-    const feats=stations.filter(st=>isFinite(st.lat)&&isFinite(st.lon)).map(st=>({
+    const list = Array.isArray(stations) ? stations.slice() : [];
+    // merge community (BYD) stations within the viewport, deduped ~100m
+    if(COMMUNITY.length){
+      const have=new Set(list.map(st=>st.lat.toFixed(3)+','+st.lon.toFixed(3)));
+      for(const st of COMMUNITY) if(st.lat>=s&&st.lat<=n&&st.lon>=w&&st.lon<=e){
+        const k=st.lat.toFixed(3)+','+st.lon.toFixed(3);
+        if(!have.has(k)){ have.add(k); list.push(st); }
+      }
+    }
+    if(stations===null && !list.length){ count.textContent=t('neterr'); return; }
+    const feats=list.filter(st=>isFinite(st.lat)&&isFinite(st.lon)).map(st=>({
       type:'Feature',geometry:{type:'Point',coordinates:[st.lon,st.lat]},properties:st}));
     map.getSource('ev').setData({type:'FeatureCollection',features:feats});
     count.textContent=tf('evcount',feats.length);
-    lastEvStations=stations; if(nearbyMode) renderNearby();   // refresh "around me" list
+    lastEvStations=list; if(nearbyMode) renderNearby();   // refresh "around me" list
   }catch(err){ if(my===evReq && err.name!=='AbortError') count.textContent=t('neterr'); }
 }
 async function fetchProxy(s,w,n,e,signal){       // Cloudflare Worker → normalised {stations}
