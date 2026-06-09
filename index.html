@@ -137,6 +137,27 @@
   #skip{all:unset;cursor:pointer;color:rgba(243,239,228,.7);font-size:13px;text-decoration:underline;
     text-underline-offset:3px}
   #skip:hover{color:var(--accent)}
+  /* two-door entry */
+  #doors{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;width:min(680px,92vw)}
+  .door{all:unset;cursor:pointer;flex:1 1 240px;min-width:230px;max-width:320px;display:flex;
+    flex-direction:column;gap:7px;padding:24px 22px;border-radius:20px;background:var(--panel);
+    border:1px solid var(--line);transition:.18s;text-align:left}
+  .door:hover,.door:focus-visible{transform:translateY(-3px);border-color:var(--accent);
+    box-shadow:0 16px 40px rgba(204,120,92,.25)}
+  .door-ev:hover,.door-ev:focus-visible{border-color:#16c784;box-shadow:0 16px 40px rgba(22,199,132,.25)}
+  .door .dico{font-size:34px;line-height:1}
+  .door .dt{font-family:var(--serif);font-size:21px;font-weight:600;color:var(--txt)}
+  .door .ds{font-size:13.5px;color:var(--muted);line-height:1.45}
+  /* step 2 (knowledge): country picker — hide doors + heading */
+  #ob-know{display:none}
+  #onboard.know #doors{display:none}
+  #onboard.know h2,#onboard.know p{display:none}
+  #onboard.know #ob-know{display:flex;flex-direction:column;align-items:center;gap:18px}
+  /* per-mode chrome: hide cross-mode tools + knowledge legend in EV mode */
+  body.mode-ev #legend{display:none}
+  body.mode-ev #exploreItem,body.mode-ev #heatbtn,body.mode-ev #timetoggle,
+  body.mode-ev #evbtn,body.mode-ev #surprise{display:none}
+  body.mode-knowledge #nearbtn,body.mode-knowledge #evbtn{display:none}
   #xrlink{all:unset;cursor:pointer;font-size:12.5px;font-weight:600;color:#06121f;
     background:linear-gradient(135deg,var(--accent),var(--accent2));padding:9px 16px;border-radius:999px}
   #xrlink{color:#fff}
@@ -349,10 +370,15 @@
 
 <div id="onboard" class="hide">
   <h2>Bắt đầu hành trình từ <span class="g">đâu?</span></h2>
-  <p>Chọn một quốc gia — quả địa cầu sẽ bay tới và xoay quanh nơi đó. Hoặc khám phá tự do.</p>
-  <button id="locbtn"><span class="ico">📍</span><span class="lbl"></span></button>
-  <div id="countries"></div>
-  <button id="skip">Khám phá tự do →</button>
+  <p></p>
+  <div id="doors">
+    <button class="door" id="door-know"><span class="dico">🔭</span><span class="dt"></span><span class="ds"></span></button>
+    <button class="door door-ev" id="door-ev"><span class="dico">⚡</span><span class="dt"></span><span class="ds"></span></button>
+  </div>
+  <div id="ob-know">
+    <div id="countries"></div>
+    <button id="skip"></button>
+  </div>
   <a id="xrlink" href="xr.html">🥽 Mở bản VR — Meta Quest / Pico</a>
 </div>
 
@@ -470,7 +496,7 @@ const I18N={
     nearby:'Lân cận',shared:'Đã chép liên kết!',
     hint:'Xoay & <b>zoom vào</b> để mở mọi bài viết của vùng',
     onboardH:'Bắt đầu hành trình từ <span class="g">đâu?</span>',
-    onboardP:'Chọn một quốc gia — quả địa cầu sẽ bay tới và xoay quanh nơi đó. Hoặc khám phá tự do.',
+    onboardP:'Chọn một hướng để bắt đầu — đổi bất cứ lúc nào.',
     skip:'Khám phá tự do →',read:'Đọc toàn bộ trên Wikipedia →',loading:'Đang tải…',
     loadingMap:'Đang tải bản đồ tri thức…',places:'{n} địa điểm',
     inview:'{n} bài trong khung nhìn',noart:'Không có bài ở vùng này',neterr:'Lỗi mạng',
@@ -485,6 +511,8 @@ const I18N={
     evslots:'cổng trống',evrealtime:'cập nhật realtime',
     near:'Quanh tôi',evnear:'{n} trạm quanh bạn',geoerr:'Không lấy được vị trí của bạn',
     tools:'Công cụ',knowledge:'Khám phá tri thức',locateCta:'Trạm sạc quanh tôi',
+    doorKnowT:'Khám phá tri thức',doorKnowS:'Wikipedia trên quả địa cầu 3D',
+    doorEvT:'Tìm trạm sạc EV',doorEvS:'Trạm quanh bạn + chỉ đường',
     featuredToday:'Nổi bật hôm nay'},
   en:{tagline:'knowledge by geography',search:'Search a place…',explore:'Discover',sat:'Satellite',heat:'Density',
     timeline:'Timeline',vnonly:'VN only',
@@ -492,7 +520,7 @@ const I18N={
     nearby:'Nearby',shared:'Link copied!',
     hint:'Spin & <b>zoom in</b> to open every article in view',
     onboardH:'Where does your journey <span class="g">begin?</span>',
-    onboardP:'Pick a country — the globe flies there and orbits it. Or explore freely.',
+    onboardP:'Choose how to start — switch anytime.',
     skip:'Explore freely →',read:'Read the full article on Wikipedia →',loading:'Loading…',
     loadingMap:'Loading the knowledge map…',places:'{n} places',
     inview:'{n} articles in view',noart:'No articles in this area',neterr:'Network error',
@@ -507,6 +535,8 @@ const I18N={
     evslots:'free',evrealtime:'live',
     near:'Near me',evnear:'{n} stations near you',geoerr:'Could not get your location',
     tools:'Tools',knowledge:'Explore knowledge',locateCta:'Charging near me',
+    doorKnowT:'Explore knowledge',doorKnowS:'Wikipedia on a 3D globe',
+    doorEvT:'Find EV charging',doorEvS:'Stations near you + directions',
     featuredToday:'Today’s highlight'},
   fr:{tagline:'le savoir par la géographie',search:'Rechercher un lieu…',explore:'Explorer',
     sat:'Satellite',heat:'Densité',timeline:'Chronologie',vnonly:'Viêt Nam',
@@ -514,7 +544,7 @@ const I18N={
     nearby:'À proximité',shared:'Lien copié !',
     hint:'Tournez & <b>zoomez</b> pour ouvrir tous les articles',
     onboardH:'Où commence votre <span class="g">voyage ?</span>',
-    onboardP:'Choisissez un pays — le globe s’y rend et tourne autour. Ou explorez librement.',
+    onboardP:'Choisissez comment commencer — modifiable à tout moment.',
     skip:'Explorer librement →',read:'Lire l’article complet sur Wikipédia →',loading:'Chargement…',
     loadingMap:'Chargement de la carte du savoir…',places:'{n} lieux',
     inview:'{n} articles dans la vue',noart:'Aucun article dans cette zone',neterr:'Erreur réseau',
@@ -529,6 +559,8 @@ const I18N={
     evslots:'libres',evrealtime:'temps réel',
     near:'Autour de moi',evnear:'{n} bornes près de vous',geoerr:'Localisation impossible',
     tools:'Outils',knowledge:'Explorer',locateCta:'Bornes près de moi',
+    doorKnowT:'Explorer le savoir',doorKnowS:'Wikipédia sur un globe 3D',
+    doorEvT:'Bornes de recharge',doorEvS:'Bornes près de vous + itinéraire',
     featuredToday:'À la une aujourd’hui'},
   ja:{tagline:'地理でめぐる知識',search:'場所を検索…',explore:'発見',sat:'衛星',heat:'密度',
     timeline:'年表',vnonly:'ベトナム',
@@ -536,7 +568,7 @@ const I18N={
     nearby:'周辺',shared:'リンクをコピーしました',
     hint:'回して<b>ズーム</b>すると記事が開きます',
     onboardH:'旅の出発点は<span class="g">どこ？</span>',
-    onboardP:'国を選ぶと地球がそこへ飛び、周回します。自由に探索もできます。',
+    onboardP:'始め方を選んでください（いつでも切替可）。',
     skip:'自由に探索 →',read:'Wikipediaで全文を読む →',loading:'読み込み中…',
     loadingMap:'知識の地図を読み込み中…',places:'{n} 地点',
     inview:'表示範囲に {n} 件',noart:'この地域に記事はありません',neterr:'ネットワークエラー',
@@ -551,6 +583,8 @@ const I18N={
     evslots:'空き',evrealtime:'リアルタイム',
     near:'周辺',evnear:'周辺に {n} 件',geoerr:'位置情報を取得できません',
     tools:'ツール',knowledge:'知識を探索',locateCta:'近くの充電器',
+    doorKnowT:'知識を探索',doorKnowS:'3D地球儀のWikipedia',
+    doorEvT:'EV充電を探す',doorEvS:'周辺の充電器 + 経路',
     featuredToday:'今日の注目'},
 };
 const t =(k)=> (I18N[LANG]||I18N.vi)[k];
@@ -796,7 +830,10 @@ function applyI18n(){
   document.querySelector('#menubtn .lbl').textContent=t('tools');
   document.querySelector('#menu .mht').textContent=t('tools');
   document.querySelector('#exploreItem .lbl').textContent=t('knowledge');
-  document.querySelector('#locbtn .lbl').textContent=t('locateCta');
+  document.querySelector('#door-know .dt').textContent=t('doorKnowT');
+  document.querySelector('#door-know .ds').textContent=t('doorKnowS');
+  document.querySelector('#door-ev .dt').textContent=t('doorEvT');
+  document.querySelector('#door-ev .ds').textContent=t('doorEvS');
   document.querySelector('#timetoggle .lbl').textContent=t('timeline');
   document.querySelector('#legend .l-city').textContent=t('legCity');
   document.querySelector('#legend .l-hist').textContent=t('legHist');
@@ -840,8 +877,9 @@ function refreshGlobalTier(){
         properties:{title,theme}});
     }
   };
-  add(CITIES,'city');     // settlements
-  add(PLACES,null);       // theme from the dataset (history/culture/nature/science)
+  const mobile=matchMedia('(max-width:620px)').matches;
+  add(CITIES,'city');     // settlements (~4k)
+  if(!mobile) add(PLACES,null);   // 35k places: skip on phones for smoothness
   add(PEOPLE,'p');        // notable people at their birthplace
   lastGlobalCount=feats.length;
   map.getSource('cities').setData({type:'FeatureCollection',features:feats});
@@ -1533,7 +1571,7 @@ function dailyFeatured(){
   return pool[(seed*2654435761>>>0)%N];
 }
 function showFeatured(){
-  if(START) return;                                // deep-links stay focused on their target
+  if(START || MODE==='ev') return;                 // skip in EV mode / deep-links
   featuredPlace=dailyFeatured(); if(!featuredPlace) return;
   const el=document.getElementById('featured');
   el.querySelector('.ft').innerHTML=`<b>${t('featuredToday')}:</b> ${featuredPlace[3][LANG]}`;
@@ -1578,10 +1616,27 @@ const COUNTRIES=[
   {cc:'ma',n:'Maroc',center:[-7.0,31.8],z:4.7},
 ];
 const onboard=document.getElementById('onboard');
-function openOnboard(){ onboard.classList.remove('hide'); }
+let MODE=null;                                   // 'knowledge' | 'ev' — the chosen door
+function setMode(m){
+  MODE=m;
+  document.body.classList.toggle('mode-ev', m==='ev');
+  document.body.classList.toggle('mode-knowledge', m==='knowledge');
+}
+function openOnboard(){ onboard.classList.remove('hide'); onboard.classList.remove('know'); }  // back to doors
 function closeOnboard(){
   onboard.classList.add('hide');
+  if(!MODE) setMode('knowledge');
   if(!featuredShown){ featuredShown=true; setTimeout(showFeatured,900); }   // surface today's pick
+}
+function enterKnowledge(){
+  setMode('knowledge');
+  if(evOn) setEvMode(false);
+  onboard.classList.add('know');                 // reveal the country-picker step
+}
+function enterEV(){
+  setMode('ev'); closeOnboard();
+  if(!evOn) setEvMode(true);                      // EV layer on even if location is denied
+  locateMe();                                     // then try to center on the user + nearby list
 }
 function flyToCountry(ct){
   closeOnboard(); exitOrbit();
@@ -1594,9 +1649,10 @@ function initOnboard(){
     flyToCountry(COUNTRIES[+b.dataset.i]);
   });
   document.getElementById('skip').onclick=closeOnboard;
-  document.getElementById('locbtn').onclick=()=>{ closeOnboard(); locateMe(); };  // ask location on entry
-  document.getElementById('brand').onclick=openOnboard;   // logo reopens the picker
-  if(!START) setTimeout(openOnboard,350);   // shared deep-links skip onboarding
+  document.getElementById('door-know').onclick=enterKnowledge;
+  document.getElementById('door-ev').onclick=enterEV;
+  document.getElementById('brand').onclick=openOnboard;   // logo reopens the door picker
+  if(!START) setTimeout(openOnboard,350); else setMode('knowledge');   // deep-links default to knowledge
 }
 </script>
 </body>
