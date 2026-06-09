@@ -248,6 +248,7 @@
     position:relative;flex:none}
   #panel .hero::after{content:"";position:absolute;inset:0;
     background:linear-gradient(to bottom,transparent 40%,var(--panel))}
+  #panel .hero .herologo{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1}
   #close{position:absolute;top:12px;right:12px;z-index:2;all:unset;cursor:pointer;
     width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.45);text-align:center;
     line-height:32px;font-size:18px;color:#fff}
@@ -310,10 +311,40 @@
     line-height:28px;color:var(--muted);font-size:18px;flex:none}
   #evlist .ehx:hover{color:var(--accent)}
   #evlist .erows{overflow:auto;padding:6px;scrollbar-width:thin;scrollbar-color:var(--accent) transparent}
-  .erow{padding:10px 12px;border-radius:11px;cursor:pointer;transition:background .12s;position:relative}
+  .erow{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:11px;cursor:pointer;
+    transition:background .12s;position:relative}
   .erow:hover{background:rgba(204,120,92,.10)}
-  .erow .en{font-size:13.5px;font-weight:600;color:var(--txt);padding-right:62px;line-height:1.25}
-  .erow .em{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .erow .einfo{flex:1;min-width:0}
+  .erow .en{font-size:13.5px;font-weight:600;color:var(--txt);padding-right:54px;line-height:1.25;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .erow .em{font-size:11.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* brand logo badge (letter fallback under a Clearbit image) */
+  .blogo{position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;
+    border-radius:10px;background:rgba(40,34,24,.06);overflow:hidden}
+  .blogo.sm{width:34px;height:34px}
+  .blogo.big{width:62px;height:62px;border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+  .blogo .bl-f{font-weight:800;color:var(--accent)}
+  .blogo.sm .bl-f{font-size:15px}
+  .blogo.big .bl-f{font-size:28px}
+  .blogo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff}
+  /* realtime connector ("súng") availability pills */
+  .connpills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .connpill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px}
+  .connpill.ok{color:#0a7d52;background:rgba(22,199,132,.18)}
+  .connpill.na{color:#b4543a;background:rgba(204,80,60,.16)}
+  /* maps chooser sheet */
+  #navsheet{position:fixed;inset:0;z-index:30;display:flex;align-items:flex-end;justify-content:center;
+    background:rgba(10,8,4,.45);backdrop-filter:blur(2px);transition:opacity .2s}
+  #navsheet.hide{opacity:0;pointer-events:none}
+  #navsheet .ns-card{width:min(420px,94vw);margin:0 0 16px;background:var(--panel);border:1px solid var(--line);
+    border-radius:18px;padding:10px;display:flex;flex-direction:column;gap:4px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+  #navsheet .ns-h{padding:8px 10px 6px;font-weight:700;font-size:13px;color:var(--muted)}
+  .ns-opt{all:unset;cursor:pointer;display:flex;align-items:center;gap:11px;padding:13px 14px;border-radius:12px;
+    font-size:15px;font-weight:600;color:var(--txt);transition:background .12s}
+  .ns-opt:hover{background:rgba(204,120,92,.10)}
+  .ns-opt .ni{font-size:18px;width:22px;text-align:center}
+  .ns-cancel{all:unset;cursor:pointer;text-align:center;padding:13px;margin-top:4px;border-radius:12px;
+    font-size:14px;font-weight:700;color:var(--accent);background:rgba(204,120,92,.10)}
   .erow .em .dist{font-weight:700;color:var(--accent)}
   .erow .es{position:absolute;top:11px;right:11px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px}
   .erow .es.ok{color:#0a7d52;background:rgba(22,199,132,.18)}
@@ -488,6 +519,16 @@
 </aside>
 <button id="evtab" title="Danh sách trạm sạc"><span class="ico">📋</span></button>
 
+<div id="navsheet" class="hide">
+  <div class="ns-card">
+    <div class="ns-h"></div>
+    <a class="ns-opt" data-app="google" target="_blank" rel="noopener"><span class="ni">🗺️</span> Google Maps</a>
+    <a class="ns-opt" data-app="apple" target="_blank" rel="noopener"><span class="ni"></span> Apple Maps</a>
+    <a class="ns-opt" data-app="waze" target="_blank" rel="noopener"><span class="ni">🚗</span> Waze</a>
+    <button class="ns-cancel"></button>
+  </div>
+</div>
+
 <aside id="panel">
   <button id="close">×</button>
   <div class="hero" id="hero"></div>
@@ -550,6 +591,7 @@ const I18N={
     tools:'Công cụ',knowledge:'Khám phá tri thức',locateCta:'Trạm sạc quanh tôi',
     doorKnowT:'Khám phá tri thức',doorKnowS:'Wikipedia trên quả địa cầu 3D',
     doorEvT:'Tìm trạm sạc EV',doorEvS:'Trạm quanh bạn + chỉ đường',
+    brandApp:'Mở app/trang hãng',navWith:'Mở chỉ đường bằng',navCancel:'Huỷ',
     featuredToday:'Nổi bật hôm nay'},
   en:{tagline:'knowledge by geography',search:'Search a place…',explore:'Discover',sat:'Satellite',heat:'Density',
     timeline:'Timeline',vnonly:'VN only',
@@ -574,6 +616,7 @@ const I18N={
     tools:'Tools',knowledge:'Explore knowledge',locateCta:'Charging near me',
     doorKnowT:'Explore knowledge',doorKnowS:'Wikipedia on a 3D globe',
     doorEvT:'Find EV charging',doorEvS:'Stations near you + directions',
+    brandApp:'Open operator app/site',navWith:'Open directions with',navCancel:'Cancel',
     featuredToday:'Today’s highlight'},
   fr:{tagline:'le savoir par la géographie',search:'Rechercher un lieu…',explore:'Explorer',
     sat:'Satellite',heat:'Densité',timeline:'Chronologie',vnonly:'Viêt Nam',
@@ -598,6 +641,7 @@ const I18N={
     tools:'Outils',knowledge:'Explorer',locateCta:'Bornes près de moi',
     doorKnowT:'Explorer le savoir',doorKnowS:'Wikipédia sur un globe 3D',
     doorEvT:'Bornes de recharge',doorEvS:'Bornes près de vous + itinéraire',
+    brandApp:'App/site de l’opérateur',navWith:'Ouvrir l’itinéraire avec',navCancel:'Annuler',
     featuredToday:'À la une aujourd’hui'},
   ja:{tagline:'地理でめぐる知識',search:'場所を検索…',explore:'発見',sat:'衛星',heat:'密度',
     timeline:'年表',vnonly:'ベトナム',
@@ -622,6 +666,7 @@ const I18N={
     tools:'ツール',knowledge:'知識を探索',locateCta:'近くの充電器',
     doorKnowT:'知識を探索',doorKnowS:'3D地球儀のWikipedia',
     doorEvT:'EV充電を探す',doorEvS:'周辺の充電器 + 経路',
+    brandApp:'事業者アプリ/サイト',navWith:'経路を開く',navCancel:'キャンセル',
     featuredToday:'今日の注目'},
 };
 const t =(k)=> (I18N[LANG]||I18N.vi)[k];
@@ -871,6 +916,8 @@ function applyI18n(){
   document.querySelector('#door-know .ds').textContent=t('doorKnowS');
   document.querySelector('#door-ev .dt').textContent=t('doorEvT');
   document.querySelector('#door-ev .ds').textContent=t('doorEvS');
+  document.querySelector('#navsheet .ns-h').textContent=t('navWith');
+  document.querySelector('#navsheet .ns-cancel').textContent=t('navCancel');
   document.querySelector('#timetoggle .lbl').textContent=t('timeline');
   document.querySelector('#legend .l-city').textContent=t('legCity');
   document.querySelector('#legend .l-hist').textContent=t('legHist');
@@ -1079,6 +1126,7 @@ async function openArticle(props){
   document.getElementById('p-meta').textContent=t('loading');
   document.getElementById('p-extract').textContent='';
   document.getElementById('hero').style.backgroundImage='none';
+  document.getElementById('hero').innerHTML='';
   pLoc.innerHTML=''; pNearby.innerHTML='';
   try{
     const r=await fetch(`https://${LANG}.wikipedia.org/api/rest_v1/page/summary/`+
@@ -1093,6 +1141,8 @@ async function openArticle(props){
       (j.content_urls&&j.content_urls.desktop.page)||
       `https://${LANG}.wikipedia.org/?curid=${props.pageid||''}`;
     document.getElementById('p-link').textContent=t('read');   // reset (EV panel reuses it)
+    document.getElementById('p-link').onclick=null;            // drop EV directions-chooser handler
+    document.getElementById('hero').innerHTML='';              // drop EV brand logo
     const img=j.thumbnail&&j.thumbnail.source;
     document.getElementById('hero').style.backgroundImage=img?`url(${img})`:'none';
     const co=j.coordinates;
@@ -1106,11 +1156,42 @@ async function openArticle(props){
   }catch(e){ if(my===openSeq) document.getElementById('p-meta').textContent=t('loaderr'); }
 }
 /* EV charging station detail — reuses the article panel with structured rows */
+/* ---------- EV brand logos + maps chooser ---------- */
+const BRAND_DOMAINS={vinfast:'vinfast.vn','v-green':'vinfast.vn',vgreen:'vinfast.vn',byd:'byd.com',
+  chargepoint:'chargepoint.com',tesla:'tesla.com',eboost:'eboost.vn','ev one':'ev1.vn',evone:'ev1.vn',
+  ev1:'ev1.vn',shell:'shell.com',porsche:'porsche.com',audi:'audi.com',mercedes:'mercedes-benz.com',
+  abb:'abb.com',autel:'autel.com','star charge':'starcharge.com',evn:'evn.com.vn',
+  ionity:'ionity.eu',fastned:'fastned.nl',allego:'allego.eu'};
+const BRAND_APPS={vinfast:'https://vinfastauto.com',byd:'https://www.byd.com/vn',eboost:'https://eboost.vn',
+  'ev one':'https://ev1.vn',ev1:'https://ev1.vn',chargepoint:'https://www.chargepoint.com',
+  tesla:'https://www.tesla.com/findus'};
+function brandKey(st){
+  const s=((st.operator||'')+' '+(st.network||'')+' '+(st.title||'')).toLowerCase();
+  let best=''; for(const k in BRAND_DOMAINS) if(s.includes(k)&&k.length>best.length) best=k;
+  return best;
+}
+function logoHtml(st,cls){
+  const dom=BRAND_DOMAINS[brandKey(st)];
+  const letter=((st.operator||st.title||'?').trim()[0]||'?').toUpperCase();
+  const img=dom?`<img src="https://www.google.com/s2/favicons?domain=${dom}&sz=128" alt="" loading="lazy" onerror="this.remove()">`:'';
+  return `<span class="blogo ${cls||''}"><span class="bl-f">${letter}</span>${img}</span>`;
+}
+const navsheet=document.getElementById('navsheet');
+function openNav(lat,lng){
+  navsheet.querySelector('[data-app=google]').href=`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  navsheet.querySelector('[data-app=apple]').href=`https://maps.apple.com/?daddr=${lat},${lng}`;
+  navsheet.querySelector('[data-app=waze]').href=`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+  navsheet.classList.remove('hide');
+}
+navsheet.querySelector('.ns-cancel').onclick=()=>navsheet.classList.add('hide');
+navsheet.addEventListener('click',e=>{ if(e.target===navsheet||e.target.closest('.ns-opt')) navsheet.classList.add('hide'); });
+
 function openStation(p,coord){
   const my=++openSeq;                              // cancel any in-flight article fetch
   panel.classList.add('open'); document.body.classList.add('panelopen');
   clearMarker(); pNearby.innerHTML='';
   document.getElementById('hero').style.backgroundImage='linear-gradient(135deg,#0f5132,#16c784)';
+  document.getElementById('hero').innerHTML='<div class="herologo">'+logoHtml(p,'big')+'</div>';
   document.getElementById('p-title').textContent=p.title;
   const esc=s=>String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   const meta=[]; if(p.operator) meta.push(esc(p.operator));
@@ -1130,9 +1211,11 @@ function openStation(p,coord){
   let html = '<div id="ev-live" class="evlivewrap"></div>' +
     (rows.length ? rows.map(r=>`<div style="margin:5px 0">${r}</div>`).join('')
     : `<span style="color:var(--muted)">${t('evnodata')}</span>`);
-  if(p.website){ const u=esc(p.website.replace(/^https?:\/\//,'').replace(/\/$/,''));
-    html+=`<div style="margin:10px 0 0"><a href="${esc(p.website)}" target="_blank" rel="noopener" `+
-      `style="color:var(--accent)">🌐 ${u}</a></div>`; }
+  const appUrl=BRAND_APPS[brandKey(p)]||p.website||'';
+  if(appUrl){ const u=esc(appUrl.replace(/^https?:\/\//,'').replace(/\/$/,''));
+    html+=`<div style="margin:11px 0 0"><a href="${esc(appUrl)}" target="_blank" rel="noopener" `+
+      `style="color:var(--accent);font-weight:700">🔌 ${t('brandApp')}</a> `+
+      `<span style="color:var(--muted);font-size:11.5px">${u}</span></div>`; }
   html+=`<div style="margin:12px 0 0;font-size:11.5px;color:var(--muted)">${t('evsrc')}</div>`;
   document.getElementById('p-extract').innerHTML=html;
   // realtime connector availability (only where the provider has a live id — e.g. EU/US)
@@ -1141,12 +1224,16 @@ function openStation(p,coord){
       if(my!==openSeq) return;
       const box=document.getElementById('ev-live'); if(!box||!a||!isFinite(a.available)||!a.total) return;
       const ok=a.available>0;
-      box.innerHTML=`<span class="evlive ${ok?'ok':'na'}">⚡ ${a.available}/${a.total} ${t('evslots')} · ${t('evrealtime')}</span>`;
+      const pills=(a.connectors||[]).map(c=>
+        `<span class="connpill ${c.available>0?'ok':'na'}">${esc(c.type)} ${c.available}/${c.total}</span>`).join('');
+      box.innerHTML=`<span class="evlive ${ok?'ok':'na'}">⚡ ${a.available}/${a.total} ${t('evslots')} · ${t('evrealtime')}</span>`+
+        (pills?`<div class="connpills">${pills}</div>`:'');
     }).catch(()=>{});
   }
   const link=document.getElementById('p-link');
-  link.href=`https://www.google.com/maps/dir/?api=1&destination=${coord[1]},${coord[0]}`;
+  link.href=`https://www.google.com/maps/dir/?api=1&destination=${coord[1]},${coord[0]}`;  // fallback
   link.textContent='🧭 '+t('evdir');
+  link.onclick=(e)=>{ e.preventDefault(); openNav(coord[1],coord[0]); };   // chooser: Google/Apple/Waze
   articleCoord=coord; setMarker(coord[0],coord[1]); showLocator(coord[0],coord[1]);
   if(innerWidth>760) map.easeTo({center:coord,offset:[-220,0],duration:650});
 }
@@ -1568,9 +1655,10 @@ function renderEvList(shown){
     if(st.operator) bits.push(escH(st.operator));
     if(st.power) bits.push(escH(st.power)); else if(st.ports) bits.push(escH(st.ports));
     if(st.conn) bits.push(escH(st.conn));
-    return `<div class="erow" data-i="${i}"><div class="en">${escH(st.title||t('evstation'))}</div>`+
+    return `<div class="erow" data-i="${i}">${logoHtml(st,'sm')}<div class="einfo">`+
+      `<div class="en">${escH(st.title||t('evstation'))}</div>`+
       `<div class="em">${bits.join(' · ')}${bits.length?' · ':''}<span class="dist">${d<10?d.toFixed(1):Math.round(d)} km</span></div>`+
-      `${st.status?`<span class="es ${ok?'ok':'na'}">${escH(st.status)}</span>`:''}</div>`;
+      `</div>${st.status?`<span class="es ${ok?'ok':'na'}">${escH(st.status)}</span>`:''}</div>`;
   }).join('') : `<div class="emsg">${map.getZoom()<5.2?t('evzoom'):t('noart')}</div>`;
   evlist.classList.add('open'); document.body.classList.add('evlistopen');
 }
