@@ -318,8 +318,35 @@
   .erow .es{position:absolute;top:11px;right:11px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px}
   .erow .es.ok{color:#0a7d52;background:rgba(22,199,132,.18)}
   .erow .es.na{color:#b4543a;background:rgba(204,80,60,.16)}
+  #evlist .grip{display:none}
+  .efilters{flex:none;display:flex;gap:6px;overflow-x:auto;padding:0 12px 10px;scrollbar-width:none}
+  .efilters::-webkit-scrollbar{display:none}
+  .chip{all:unset;cursor:pointer;flex:none;font-size:12px;font-weight:600;color:var(--muted);
+    background:rgba(40,34,24,.05);border:1px solid var(--line);border-radius:999px;padding:5px 11px;
+    white-space:nowrap;transition:.12s}
+  .chip:hover{border-color:var(--accent)}
+  .chip.on{color:#fff;background:linear-gradient(135deg,#16c784,#0f9d63);border-color:transparent}
+  .emsg{padding:24px 16px;color:var(--muted);font-size:13px;text-align:center}
+  #evtab{all:unset;cursor:pointer;position:absolute;z-index:6;left:14px;bottom:16px;display:none;
+    align-items:center;gap:7px;font-size:16px;color:#fff;background:linear-gradient(135deg,#16c784,#0f9d63);
+    padding:11px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(22,199,132,.4)}
+  body.mode-ev:not(.evlistopen) #evtab{display:inline-flex}
   @media(min-width:760px){ body.evlistopen #bar{padding-left:calc(min(336px,86vw) + 20px)} }
-  @media(max-width:620px){ #evlist{width:88vw} }
+  @media(max-width:620px){
+    /* EV finder → bottom sheet on phones (list-first) */
+    #evlist{top:auto;bottom:0;left:0;right:0;width:auto;height:56vh;border-right:none;
+      border-top:1px solid var(--line);border-radius:18px 18px 0 0;transform:translateY(108%);
+      box-shadow:0 -16px 50px rgba(0,0,0,.5)}
+    #evlist.open{transform:translateY(0)}
+    #evlist .grip{display:block;width:40px;height:4px;border-radius:4px;background:var(--line);
+      margin:8px auto 2px;flex:none}
+    body.evlistopen #bar{padding-left:18px}
+    /* article/station detail → bottom sheet too (consistent) */
+    #panel{top:auto;bottom:0;left:0;right:0;width:auto;height:84vh;border-left:none;
+      border-top:1px solid var(--line);border-radius:18px 18px 0 0;transform:translateY(108%);
+      box-shadow:0 -16px 50px rgba(0,0,0,.5)}
+    #panel.open{transform:translateY(0)}
+  }
 
   /* pulse marker on the selected article */
   .wg-pulse{width:13px;height:13px;border-radius:50%;background:var(--accent);cursor:pointer;
@@ -447,9 +474,19 @@
 <div id="tip"><div class="t"></div><img alt=""></div>
 
 <aside id="evlist">
-  <div class="eh"><span class="eht">📍</span><button class="ehx" title="Đóng">×</button></div>
+  <div class="grip"></div>
+  <div class="eh"><span class="eht"></span><button class="ehx" title="Đóng">×</button></div>
+  <div class="efilters">
+    <button class="chip" data-f="fast">⚡ Nhanh</button>
+    <button class="chip" data-f="free">Free</button>
+    <button class="chip" data-f="ccs">CCS</button>
+    <button class="chip" data-f="type2">Type 2</button>
+    <button class="chip" data-f="byd">BYD</button>
+    <button class="chip" data-f="vinfast">VinFast</button>
+  </div>
   <div class="erows"></div>
 </aside>
+<button id="evtab" title="Danh sách trạm sạc"><span class="ico">📋</span></button>
 
 <aside id="panel">
   <button id="close">×</button>
@@ -1391,9 +1428,9 @@ async function loadEV(){
   if(!evOn||!map.getSource('ev')) return;
   const count=document.getElementById('count'), hint=document.getElementById('hint');
   if(map.getZoom()<5.2){                            // Overpass over a whole continent = timeout
-    map.getSource('ev').setData(EMPTY);
+    lastEvStations=[]; map.getSource('ev').setData(EMPTY);
     hint.innerHTML='⚡ '+t('evzoom'); hint.style.opacity=1;
-    count.textContent=t('evzoom'); return;
+    count.textContent=t('evzoom'); renderEvList([]); return;
   }
   hint.style.opacity=0;
   const b=map.getBounds(), w=b.getWest(),e=b.getEast(),s=b.getSouth(),n=b.getNorth();
@@ -1418,11 +1455,8 @@ async function loadEV(){
       }
     }
     if(stations===null && !list.length){ count.textContent=t('neterr'); return; }
-    const feats=list.filter(st=>isFinite(st.lat)&&isFinite(st.lon)).map(st=>({
-      type:'Feature',geometry:{type:'Point',coordinates:[st.lon,st.lat]},properties:st}));
-    map.getSource('ev').setData({type:'FeatureCollection',features:feats});
-    count.textContent=tf('evcount',feats.length);
-    lastEvStations=list; if(nearbyMode) renderNearby();   // refresh "around me" list
+    lastEvStations=list.filter(st=>isFinite(st.lat)&&isFinite(st.lon));
+    applyEvRender();                                  // filter → map dots + finder list
   }catch(err){ if(my===evReq && err.name!=='AbortError') count.textContent=t('neterr'); }
 }
 async function fetchProxy(s,w,n,e,signal){       // Cloudflare Worker → normalised {stations}
@@ -1461,12 +1495,14 @@ function setEvMode(on){
     setVis(['cities-clusters','cities-cluster-count','cities-glow','cities-point',
             'clusters','cluster-count','point-glow','point','heatmap'],false);
     lg.style.opacity=0; lg.style.pointerEvents='none';
-    loadEV();
+    evListOpen=true; loadEV();
   }else{
     if(map.getSource('ev')) map.getSource('ev').setData(EMPTY);
     document.getElementById('hint').innerHTML='🌍 '+t('hint');
     lg.style.opacity=1; lg.style.pointerEvents='auto';
-    nearbyMode=false; closeNearby();
+    evListOpen=false; evlist.classList.remove('open'); document.body.classList.remove('evlistopen');
+    evFilters.clear(); document.querySelectorAll('.efilters .chip.on').forEach(c=>c.classList.remove('on'));
+    if(hereOn){ hereMarker.remove(); hereOn=false; }
     updateTiers();
   }
 }
@@ -1475,7 +1511,7 @@ evbtn.onclick=()=>setEvMode(!evOn);
 /* ---------- "around me": geolocation + nearest-stations list ---------- */
 const nearbtn=document.getElementById('nearbtn');
 const evlist=document.getElementById('evlist');
-let userLoc=null, nearbyMode=false, lastEvStations=[], nearbyList=[];
+let userLoc=null, lastEvStations=[], evRows=[], evListOpen=false; const evFilters=new Set();
 const hereEl=document.createElement('div'); hereEl.className='wg-here';
 const hereMarker=new maplibregl.Marker({element:hereEl}); let hereOn=false;
 function distKm(la1,lo1,la2,lo2){
@@ -1489,43 +1525,71 @@ function locateMe(){
   navigator.geolocation.getCurrentPosition(pos=>{
     userLoc=[pos.coords.longitude,pos.coords.latitude];
     hereMarker.setLngLat(userLoc).addTo(map); hereOn=true;
-    nearbyMode=true;
+    evListOpen=true;
     if(!evOn) setEvMode(true);
     exitOrbit();
-    cinematic(userLoc,13,0);            // fly to me → moveend → loadEV → renderNearby
+    cinematic(userLoc,13,0);            // fly to me → moveend → loadEV → finder sorted by distance
   },()=>{ nearbtn.classList.remove('on'); document.getElementById('count').textContent=t('geoerr'); },
   {enableHighAccuracy:true,timeout:10000,maximumAge:60000});
 }
-nearbtn.onclick=()=>{ if(nearbyMode){ closeNearby(); } else locateMe(); };
+nearbtn.onclick=()=>locateMe();        // 📍 (re)centers on the user
 const escH=s=>String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-function renderNearby(){
-  if(!userLoc||!nearbyMode) return;
-  nearbyList=lastEvStations.map(st=>({st,d:distKm(userLoc[1],userLoc[0],st.lat,st.lon)}))
-    .sort((a,b)=>a.d-b.d).slice(0,20);
-  evlist.querySelector('.eht').innerHTML='📍 '+tf('evnear',nearbyList.length);
-  evlist.querySelector('.erows').innerHTML=nearbyList.map(({st,d},i)=>{
+const evCenter=()=> userLoc || [map.getCenter().lng, map.getCenter().lat];
+function passEV(st){
+  for(const f of evFilters){
+    if(f==='fast'){ if(!((parseFloat(st.power)||0)>=50 || /CCS|CHAdeMO/i.test(st.conn||''))) return false; }
+    else if(f==='free'){ const fee=(st.fee||'').toLowerCase(); if(!(fee==='no'||/free|miễn|gratu|無料/.test(fee))) return false; }
+    else if(f==='ccs'){ if(!/ccs/i.test(st.conn||'')) return false; }
+    else if(f==='type2'){ if(!/type ?2/i.test(st.conn||'')) return false; }
+    else if(f==='byd'){ if(!/byd/i.test((st.title||'')+(st.operator||'')+(st.network||''))) return false; }
+    else if(f==='vinfast'){ if(!/vin\s?fast|v-?green/i.test((st.title||'')+(st.operator||'')+(st.network||''))) return false; }
+  }
+  return true;
+}
+// filter → repaint map dots + finder list (no refetch)
+function applyEvRender(){
+  if(!evOn||!map.getSource('ev')) return;
+  const shown=lastEvStations.filter(passEV);
+  map.getSource('ev').setData({type:'FeatureCollection',features:shown.map(st=>({
+    type:'Feature',geometry:{type:'Point',coordinates:[st.lon,st.lat]},properties:st}))});
+  document.getElementById('count').textContent=tf('evcount',shown.length);
+  renderEvList(shown);
+}
+function renderEvList(shown){
+  if(!evOn) return;
+  if(!evListOpen){ evlist.classList.remove('open'); document.body.classList.remove('evlistopen'); return; }
+  const c=evCenter();
+  const ranked=shown.map(st=>({st,d:distKm(c[1],c[0],st.lat,st.lon)})).sort((a,b)=>a.d-b.d);
+  evRows=ranked.slice(0,60);
+  evlist.querySelector('.eht').innerHTML=(userLoc?'📍 ':'⚡ ')+tf(userLoc?'evnear':'evcount',ranked.length);
+  evlist.querySelector('.erows').innerHTML = ranked.length ? evRows.map(({st,d},i)=>{
     const ok=/avail|oper/i.test(st.status);
     const bits=[];
     if(st.operator) bits.push(escH(st.operator));
     if(st.power) bits.push(escH(st.power)); else if(st.ports) bits.push(escH(st.ports));
     if(st.conn) bits.push(escH(st.conn));
-    const dist=`<span class="dist">${d<10?d.toFixed(1):Math.round(d)} km</span>`;
     return `<div class="erow" data-i="${i}"><div class="en">${escH(st.title||t('evstation'))}</div>`+
-      `<div class="em">${bits.join(' · ')}${bits.length?' · ':''}${dist}</div>`+
+      `<div class="em">${bits.join(' · ')}${bits.length?' · ':''}<span class="dist">${d<10?d.toFixed(1):Math.round(d)} km</span></div>`+
       `${st.status?`<span class="es ${ok?'ok':'na'}">${escH(st.status)}</span>`:''}</div>`;
-  }).join('') || `<div style="padding:20px;color:var(--muted);font-size:13px">${t('noart')}</div>`;
+  }).join('') : `<div class="emsg">${map.getZoom()<5.2?t('evzoom'):t('noart')}</div>`;
   evlist.classList.add('open'); document.body.classList.add('evlistopen');
-}
-function closeNearby(){
-  nearbyMode=false; evlist.classList.remove('open'); document.body.classList.remove('evlistopen');
-  nearbtn.classList.remove('on'); if(hereOn){ hereMarker.remove(); hereOn=false; }
 }
 evlist.querySelector('.erows').addEventListener('click',e=>{
   const row=e.target.closest('.erow'); if(!row) return;
-  const item=nearbyList[+row.dataset.i]; if(!item) return;
+  const item=evRows[+row.dataset.i]; if(!item) return;
   openStation(item.st,[item.st.lon,item.st.lat]);
 });
-evlist.querySelector('.ehx').onclick=closeNearby;
+evlist.querySelector('.ehx').onclick=()=>{
+  evListOpen=false; evlist.classList.remove('open'); document.body.classList.remove('evlistopen');
+};
+evlist.querySelector('.efilters').addEventListener('click',e=>{
+  const c=e.target.closest('.chip'); if(!c) return;
+  const f=c.dataset.f;
+  if(evFilters.has(f)) evFilters.delete(f); else evFilters.add(f);
+  c.classList.toggle('on', evFilters.has(f));
+  applyEvRender();
+});
+document.getElementById('evtab').onclick=()=>{ evListOpen=true; applyEvRender(); };
 
 /* ---------- tools menu: onboard first, then open one feature at a time ---------- */
 const menu=document.getElementById('menu'), menubtn=document.getElementById('menubtn');
