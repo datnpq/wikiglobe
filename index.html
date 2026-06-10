@@ -2,9 +2,11 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>WikiGlobe — Tri thức quay vòng quanh Trái Đất</title>
 <link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
@@ -23,7 +25,11 @@
     --txt:#2b2925; --muted:#75716a; --accent:#cc785c; --accent2:#b3543a;
     --brand:#f3efe4; --serif:"Newsreader",Georgia,"Times New Roman",serif;
   }
-  *{box-sizing:border-box}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  /* Phosphor icons: align like an app, kill italics */
+  i.ph,i[class^="ph "],i[class*=" ph-"]{font-style:normal;line-height:1;vertical-align:-0.1em;display:inline-block}
+  .erows,#panel .body,#countries,#results{-webkit-overflow-scrolling:touch}
+  #p-extract i.ph,#p-extract i[class*="ph-"]{color:var(--accent);margin-right:3px;vertical-align:-0.12em}
   html,body{height:100%;margin:0;background:var(--bg);color:var(--txt);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;overflow:hidden}
   /* starfield behind the globe (warm dusk cosmos) */
@@ -336,7 +342,7 @@
   #navsheet{position:fixed;inset:0;z-index:30;display:flex;align-items:flex-end;justify-content:center;
     background:rgba(10,8,4,.45);backdrop-filter:blur(2px);transition:opacity .2s}
   #navsheet.hide{opacity:0;pointer-events:none}
-  #navsheet .ns-card{width:min(420px,94vw);margin:0 0 16px;background:var(--panel);border:1px solid var(--line);
+  #navsheet .ns-card{width:min(420px,94vw);margin:0 0 max(16px,env(safe-area-inset-bottom));background:var(--panel);border:1px solid var(--line);
     border-radius:18px;padding:10px;display:flex;flex-direction:column;gap:4px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
   #navsheet .ns-h{padding:8px 10px 6px;font-weight:700;font-size:13px;color:var(--muted)}
   .ns-opt{all:unset;cursor:pointer;display:flex;align-items:center;gap:11px;padding:13px 14px;border-radius:12px;
@@ -377,6 +383,9 @@
       border-top:1px solid var(--line);border-radius:18px 18px 0 0;transform:translateY(108%);
       box-shadow:0 -16px 50px rgba(0,0,0,.5)}
     #panel.open{transform:translateY(0)}
+    #evlist .erows{padding-bottom:max(10px,env(safe-area-inset-bottom))}
+    #panel .body{padding-bottom:calc(env(safe-area-inset-bottom) + 24px)}
+    #evtab{bottom:calc(16px + env(safe-area-inset-bottom))}
   }
 
   /* pulse marker on the selected article */
@@ -430,39 +439,39 @@
   <h2>Bắt đầu hành trình từ <span class="g">đâu?</span></h2>
   <p></p>
   <div id="doors">
-    <button class="door" id="door-know"><span class="dico">🔭</span><span class="dt"></span><span class="ds"></span></button>
-    <button class="door door-ev" id="door-ev"><span class="dico">⚡</span><span class="dt"></span><span class="ds"></span></button>
+    <button class="door" id="door-know"><span class="dico"><i class="ph-fill ph-globe-hemisphere-east"></i></span><span class="dt"></span><span class="ds"></span></button>
+    <button class="door door-ev" id="door-ev"><span class="dico"><i class="ph-fill ph-charging-station"></i></span><span class="dt"></span><span class="ds"></span></button>
   </div>
   <div id="ob-know">
     <div id="countries"></div>
     <button id="skip"></button>
   </div>
-  <a id="xrlink" href="xr.html">🥽 Mở bản VR — Meta Quest / Pico</a>
+  <a id="xrlink" href="xr.html"><i class="ph ph-cube"></i> Mở bản VR — Meta Quest / Pico</a>
 </div>
 
 <div id="bar">
   <div id="brand" title="Chọn quốc gia"><span class="dot"></span><span class="txt">WikiGlobe</span><small>tri thức theo địa lý</small></div>
   <div id="search">
-    <div class="field"><span class="ico">🔍</span>
+    <div class="field"><span class="ico"><i class="ph ph-magnifying-glass"></i></span>
       <input id="q" type="text" placeholder="Tìm địa điểm…" autocomplete="off"
         spellcheck="false" enterkeyhint="search" /></div>
     <div id="results"></div>
   </div>
   <div class="spacer"></div>
   <div id="count">Đang chờ…</div>
-  <button id="menubtn" title="Công cụ"><span class="ico">☰</span><span class="lbl"></span></button>
+  <button id="menubtn" title="Công cụ"><span class="ico"><i class="ph ph-faders-horizontal"></i></span><span class="lbl"></span></button>
 </div>
 
 <div id="menu">
-  <div class="mhead"><span class="mht"></span><button class="mhx" title="Đóng">×</button></div>
-  <button class="mitem" id="exploreItem"><span class="ico">🔭</span><span class="lbl"></span></button>
-  <button class="mitem" id="heatbtn" title="Bản đồ mật độ tri thức"><span class="ico">🔥</span><span class="lbl"></span></button>
-  <button class="mitem" id="timetoggle"><span class="ico">🕰</span><span class="lbl"></span></button>
-  <button class="mitem" id="evbtn" title="Trạm sạc xe điện"><span class="ico">⚡</span><span class="lbl"></span></button>
-  <button class="mitem" id="nearbtn" title="Trạm sạc quanh tôi"><span class="ico">📍</span><span class="lbl"></span></button>
-  <button class="mitem" id="surprise" title="Bay tới một địa danh bất ngờ"><span class="ico">✨</span><span class="lbl"></span></button>
-  <button class="mitem" id="satbtn"><span class="ico">🛰</span><span class="lbl"></span></button>
-  <div class="mlang"><span class="mll">🌐</span>
+  <div class="mhead"><span class="mht"></span><button class="mhx" title="Đóng"><i class="ph ph-x"></i></button></div>
+  <button class="mitem" id="exploreItem"><span class="ico"><i class="ph ph-globe-hemisphere-east"></i></span><span class="lbl"></span></button>
+  <button class="mitem" id="heatbtn" title="Bản đồ mật độ tri thức"><span class="ico"><i class="ph ph-fire"></i></span><span class="lbl"></span></button>
+  <button class="mitem" id="timetoggle"><span class="ico"><i class="ph ph-clock-countdown"></i></span><span class="lbl"></span></button>
+  <button class="mitem" id="evbtn" title="Trạm sạc xe điện"><span class="ico"><i class="ph ph-charging-station"></i></span><span class="lbl"></span></button>
+  <button class="mitem" id="nearbtn" title="Trạm sạc quanh tôi"><span class="ico"><i class="ph ph-crosshair-simple"></i></span><span class="lbl"></span></button>
+  <button class="mitem" id="surprise" title="Bay tới một địa danh bất ngờ"><span class="ico"><i class="ph ph-sparkle"></i></span><span class="lbl"></span></button>
+  <button class="mitem" id="satbtn"><span class="ico"><i class="ph ph-planet"></i></span><span class="lbl"></span></button>
+  <div class="mlang"><span class="mll"><i class="ph ph-translate"></i></span>
     <div class="pill" id="lang">
       <button data-lang="vi" class="on">VI</button>
       <button data-lang="en">EN</button>
@@ -472,12 +481,12 @@
   </div>
 </div>
 
-<div id="hint">🌍 Xoay & <b>zoom vào</b> để mở mọi bài viết của vùng</div>
+<div id="hint"><i class="ph ph-globe-hemisphere-east"></i> Xoay & <b>zoom vào</b> để mở mọi bài viết của vùng</div>
 
 <div id="featured">
-  <span class="star">✨</span>
+  <span class="star"><i class="ph-fill ph-sparkle"></i></span>
   <span class="ft"></span>
-  <button class="fx" title="Đóng">×</button>
+  <button class="fx" title="Đóng"><i class="ph ph-x"></i></button>
 </div>
 
 <div id="legend">
@@ -493,7 +502,7 @@
   <div id="erband" title="Các giai đoạn lịch sử Việt Nam"></div>
   <input id="year" type="range" min="-1830" max="2026" value="1500" step="1" aria-label="Năm" />
   <div class="trow">
-    <button id="play" title="Tự chạy">▶</button>
+    <button id="play" title="Tự chạy"><i class="ph-fill ph-play"></i></button>
     <div id="eraname"></div>
     <button id="vntoggle" title="Chỉ hiện sự kiện ở Việt Nam">
       <img class="vnflag" src="https://flagcdn.com/vn.svg" alt="VN">chỉ VN</button>
@@ -506,9 +515,9 @@
 
 <aside id="evlist">
   <div class="grip"></div>
-  <div class="eh"><span class="eht"></span><button class="ehx" title="Đóng">×</button></div>
+  <div class="eh"><span class="eht"></span><button class="ehx" title="Đóng"><i class="ph ph-x"></i></button></div>
   <div class="efilters">
-    <button class="chip" data-f="fast">⚡ Nhanh</button>
+    <button class="chip" data-f="fast"><i class="ph ph-lightning"></i> Nhanh</button>
     <button class="chip" data-f="free">Free</button>
     <button class="chip" data-f="ccs">CCS</button>
     <button class="chip" data-f="type2">Type 2</button>
@@ -517,20 +526,20 @@
   </div>
   <div class="erows"></div>
 </aside>
-<button id="evtab" title="Danh sách trạm sạc"><span class="ico">📋</span></button>
+<button id="evtab" title="Danh sách trạm sạc"><span class="ico"><i class="ph ph-list-bullets"></i></span></button>
 
 <div id="navsheet" class="hide">
   <div class="ns-card">
     <div class="ns-h"></div>
-    <a class="ns-opt" data-app="google" target="_blank" rel="noopener"><span class="ni">🗺️</span> Google Maps</a>
-    <a class="ns-opt" data-app="apple" target="_blank" rel="noopener"><span class="ni"></span> Apple Maps</a>
-    <a class="ns-opt" data-app="waze" target="_blank" rel="noopener"><span class="ni">🚗</span> Waze</a>
+    <a class="ns-opt" data-app="google" target="_blank" rel="noopener"><span class="ni"><i class="ph ph-map-trifold"></i></span> Google Maps</a>
+    <a class="ns-opt" data-app="apple" target="_blank" rel="noopener"><span class="ni"><i class="ph ph-apple-logo"></i></span> Apple Maps</a>
+    <a class="ns-opt" data-app="waze" target="_blank" rel="noopener"><span class="ni"><i class="ph ph-navigation-arrow"></i></span> Waze</a>
     <button class="ns-cancel"></button>
   </div>
 </div>
 
 <aside id="panel">
-  <button id="close">×</button>
+  <button id="close"><i class="ph ph-x"></i></button>
   <div class="hero" id="hero"></div>
   <div class="body">
     <h1 id="p-title"></h1>
@@ -538,7 +547,7 @@
     <div class="extract" id="p-extract"></div>
     <div class="pactions">
       <a class="read" id="p-link" target="_blank" rel="noopener">Đọc toàn bộ trên Wikipedia →</a>
-      <button class="share" id="p-share" title="Chia sẻ vị trí">⤴</button>
+      <button class="share" id="p-share" title="Chia sẻ vị trí"><i class="ph ph-share-network"></i></button>
     </div>
     <div id="p-loc"></div>
     <div id="p-nearby"></div>
@@ -927,7 +936,7 @@ function applyI18n(){
   document.querySelector('#legend .l-ppl').textContent=t('legPpl');
   document.getElementById('vntoggle').innerHTML=
     '<img class="vnflag" src="https://flagcdn.com/vn.svg" alt="VN">'+t('vnonly');
-  document.getElementById('hint').innerHTML='🌍 '+t('hint');
+  document.getElementById('hint').innerHTML='<i class="ph ph-globe-hemisphere-east"></i> '+t('hint');
   document.querySelector('#onboard h2').innerHTML=t('onboardH');
   document.querySelector('#onboard p').textContent=t('onboardP');
   document.getElementById('skip').textContent=t('skip');
@@ -1095,7 +1104,7 @@ function showLocator(lon,lat){
   pLoc.innerHTML=
     `<div class="mini" style="background-image:url(https://a.basemaps.cartocdn.com/dark_all/0/0/0.png)">`+
     `<div class="pin" style="left:${(x*100).toFixed(2)}%;top:${(y*100).toFixed(2)}%"></div></div>`+
-    `<div class="coords">📍 ${lat.toFixed(4)}, ${lon.toFixed(4)}</div>`;
+    `<div class="coords"><i class="ph ph-map-pin"></i> ${lat.toFixed(4)}, ${lon.toFixed(4)}</div>`;
 }
 
 let nearbySeq=0;
@@ -1201,20 +1210,20 @@ function openStation(p,coord){
   const rows=[];
   if(p.status){ const ok=/avail/i.test(p.status);
     rows.push(`<span class="evstatus ${ok?'ok':'na'}">${esc(p.status)}</span>`); }
-  if(p.address)  rows.push(`📍 ${esc(p.address)}`);
-  if(p.conn)     rows.push(`🔌 <b>${t('evconn')}:</b> ${esc(p.conn)}`);
-  if(p.ports)    rows.push(`🔢 <b>${t('evports')}:</b> ${esc(p.ports)}`);
-  if(p.power)    rows.push(`⚡ <b>${t('evpower')}:</b> ${esc(p.power)}`);
-  if(p.fee)      rows.push(`💳 <b>${t('evfee')}:</b> ${p.fee==='no'||/free/i.test(p.fee)?t('evfree'):p.fee==='yes'?t('evpaid'):esc(p.fee)}`);
-  if(p.access)   rows.push(`🔒 ${esc(p.access)}`);
-  if(p.checkdate)rows.push(`🕓 <b>${t('evchecked')}:</b> ${esc(p.checkdate)}`);
+  if(p.address)  rows.push(`<i class="ph ph-map-pin"></i> ${esc(p.address)}`);
+  if(p.conn)     rows.push(`<i class="ph ph-plug"></i> <b>${t('evconn')}:</b> ${esc(p.conn)}`);
+  if(p.ports)    rows.push(`<i class="ph ph-plugs-connected"></i> <b>${t('evports')}:</b> ${esc(p.ports)}`);
+  if(p.power)    rows.push(`<i class="ph ph-lightning"></i> <b>${t('evpower')}:</b> ${esc(p.power)}`);
+  if(p.fee)      rows.push(`<i class="ph ph-credit-card"></i> <b>${t('evfee')}:</b> ${p.fee==='no'||/free/i.test(p.fee)?t('evfree'):p.fee==='yes'?t('evpaid'):esc(p.fee)}`);
+  if(p.access)   rows.push(`<i class="ph ph-lock-simple"></i> ${esc(p.access)}`);
+  if(p.checkdate)rows.push(`<i class="ph ph-clock-counter-clockwise"></i> <b>${t('evchecked')}:</b> ${esc(p.checkdate)}`);
   let html = '<div id="ev-live" class="evlivewrap"></div>' +
     (rows.length ? rows.map(r=>`<div style="margin:5px 0">${r}</div>`).join('')
     : `<span style="color:var(--muted)">${t('evnodata')}</span>`);
   const appUrl=BRAND_APPS[brandKey(p)]||p.website||'';
   if(appUrl){ const u=esc(appUrl.replace(/^https?:\/\//,'').replace(/\/$/,''));
     html+=`<div style="margin:11px 0 0"><a href="${esc(appUrl)}" target="_blank" rel="noopener" `+
-      `style="color:var(--accent);font-weight:700">🔌 ${t('brandApp')}</a> `+
+      `style="color:var(--accent);font-weight:700"><i class="ph ph-plug"></i> ${t('brandApp')}</a> `+
       `<span style="color:var(--muted);font-size:11.5px">${u}</span></div>`; }
   html+=`<div style="margin:12px 0 0;font-size:11.5px;color:var(--muted)">${t('evsrc')}</div>`;
   document.getElementById('p-extract').innerHTML=html;
@@ -1226,13 +1235,13 @@ function openStation(p,coord){
       const ok=a.available>0;
       const pills=(a.connectors||[]).map(c=>
         `<span class="connpill ${c.available>0?'ok':'na'}">${esc(c.type)} ${c.available}/${c.total}</span>`).join('');
-      box.innerHTML=`<span class="evlive ${ok?'ok':'na'}">⚡ ${a.available}/${a.total} ${t('evslots')} · ${t('evrealtime')}</span>`+
+      box.innerHTML=`<span class="evlive ${ok?'ok':'na'}"><i class="ph-fill ph-lightning"></i> ${a.available}/${a.total} ${t('evslots')} · ${t('evrealtime')}</span>`+
         (pills?`<div class="connpills">${pills}</div>`:'');
     }).catch(()=>{});
   }
   const link=document.getElementById('p-link');
   link.href=`https://www.google.com/maps/dir/?api=1&destination=${coord[1]},${coord[0]}`;  // fallback
-  link.textContent='🧭 '+t('evdir');
+  link.innerHTML='<i class="ph ph-navigation-arrow"></i> '+t('evdir');
   link.onclick=(e)=>{ e.preventDefault(); openNav(coord[1],coord[0]); };   // chooser: Google/Apple/Waze
   articleCoord=coord; setMarker(coord[0],coord[1]); showLocator(coord[0],coord[1]);
   if(innerWidth>760) map.easeTo({center:coord,offset:[-220,0],duration:650});
@@ -1359,9 +1368,9 @@ function refreshEvents(){
   writeHash();
 }
 
-function stopPlay(){ if(playTimer){ clearInterval(playTimer); playTimer=0; playBtn.textContent='▶'; } }
+function stopPlay(){ if(playTimer){ clearInterval(playTimer); playTimer=0; playBtn.innerHTML='<i class="ph-fill ph-play"></i>'; } }
 function startPlay(){
-  playBtn.textContent='⏸';
+  playBtn.innerHTML='<i class="ph-fill ph-pause"></i>';
   playTimer=setInterval(()=>{
     let y=+yearSlider.value+6;
     if(y>+yearSlider.max) y=+yearSlider.min;   // loop back to the start of time
@@ -1516,7 +1525,7 @@ async function loadEV(){
   const count=document.getElementById('count'), hint=document.getElementById('hint');
   if(map.getZoom()<5.2){                            // Overpass over a whole continent = timeout
     lastEvStations=[]; map.getSource('ev').setData(EMPTY);
-    hint.innerHTML='⚡ '+t('evzoom'); hint.style.opacity=1;
+    hint.innerHTML='<i class="ph ph-charging-station"></i> '+t('evzoom'); hint.style.opacity=1;
     count.textContent=t('evzoom'); renderEvList([]); return;
   }
   hint.style.opacity=0;
@@ -1585,7 +1594,7 @@ function setEvMode(on){
     evListOpen=true; loadEV();
   }else{
     if(map.getSource('ev')) map.getSource('ev').setData(EMPTY);
-    document.getElementById('hint').innerHTML='🌍 '+t('hint');
+    document.getElementById('hint').innerHTML='<i class="ph ph-globe-hemisphere-east"></i> '+t('hint');
     lg.style.opacity=1; lg.style.pointerEvents='auto';
     evListOpen=false; evlist.classList.remove('open'); document.body.classList.remove('evlistopen');
     evFilters.clear(); document.querySelectorAll('.efilters .chip.on').forEach(c=>c.classList.remove('on'));
@@ -1648,7 +1657,7 @@ function renderEvList(shown){
   const c=evCenter();
   const ranked=shown.map(st=>({st,d:distKm(c[1],c[0],st.lat,st.lon)})).sort((a,b)=>a.d-b.d);
   evRows=ranked.slice(0,60);
-  evlist.querySelector('.eht').innerHTML=(userLoc?'📍 ':'⚡ ')+tf(userLoc?'evnear':'evcount',ranked.length);
+  evlist.querySelector('.eht').innerHTML=(userLoc?'<i class="ph ph-crosshair-simple"></i> ':'<i class="ph ph-charging-station"></i> ')+tf(userLoc?'evnear':'evcount',ranked.length);
   evlist.querySelector('.erows').innerHTML = ranked.length ? evRows.map(({st,d},i)=>{
     const ok=/avail|oper/i.test(st.status);
     const bits=[];
