@@ -35,7 +35,7 @@
 <div id="loading">Đang dựng vũ trụ tri thức…</div>
 <div id="info">
   <h1><b>WikiGlobe</b> XR</h1>
-  <p>Đeo kính → <b>Enter VR</b> → <b>búng (pinch) tay</b> vào một chấm để mở, hoặc chĩa tay/tay cầm rồi bóp cò. Trên máy tính → kéo chuột xoay, lăn zoom, bấm vào chấm.</p>
+  <p>Đeo kính → <b>Enter VR</b> → <b>cần analog</b> xoay/zoom địa cầu · chĩa tia rồi <b>bóp cò</b> (hoặc <b>búng tay</b>) vào chấm để mở · búng chỗ trống để đóng. Trên máy tính → kéo chuột xoay, lăn zoom, bấm vào chấm.</p>
 </div>
 <div id="legend">
   <span><i style="background:#ffd479"></i>Đô thị</span>
@@ -201,7 +201,7 @@ function roundRect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x
 
 let openSeq = 0;
 async function open(meta){
-  panel.visible = true;
+  panel.visible = true; placePanel();
   drawPanel(meta.title, 'Đang tải…', meta.lang.toUpperCase());
   const my = ++openSeq;
   try{
@@ -225,11 +225,13 @@ function selectIndex(idx){
   open(m);
 }
 function pickFrom(origin, dir){
-  if (!POINTS) return;
+  if (!POINTS) return false;
   ray.set(origin, dir);
   const hit = ray.intersectObject(POINTS, false)[0];
-  if (hit) selectIndex(hit.index);
+  if (hit){ selectIndex(hit.index); return true; }
+  return false;
 }
+function dismiss(){ panel.visible = false; marker.visible = false; }
 // nearest point to a WORLD position (for fingertip "búng" selection)
 const _wp = new THREE.Vector3();
 function nearestPoint(world){
@@ -260,8 +262,10 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
 const tmpM = new THREE.Matrix4(), org = new THREE.Vector3(), dir = new THREE.Vector3();
 const handFactory = new XRHandModelFactory();
 const hands = [];
+const xrControllers = [];
 for (const i of [0,1]){
   const ctrl = renderer.xr.getController(i);
+  xrControllers.push(ctrl);
   const line = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,-5)]),
     new THREE.LineBasicMaterial({ color:0xcc785c, transparent:true, opacity:0.6 }));
@@ -282,7 +286,7 @@ for (const i of [0,1]){
     tmpM.identity().extractRotation(ctrl.matrixWorld);
     org.setFromMatrixPosition(ctrl.matrixWorld);
     dir.set(0,0,-1).applyMatrix4(tmpM).normalize();
-    pickFrom(org, dir);
+    if (!pickFrom(org, dir)) dismiss();              // pinch/trigger on empty → dismiss
   });
   scene.add(ctrl);
 
@@ -290,6 +294,63 @@ for (const i of [0,1]){
   hand.add(handFactory.createHandModel(hand, 'spheres'));   // joint spheres, no external assets
   scene.add(hand);
   hands[i] = hand;
+}
+
+// ---- VR hover label + reticle + thumbstick navigation ----
+const HCAN=document.createElement('canvas'); HCAN.width=512; HCAN.height=140;
+const HCTX=HCAN.getContext('2d');
+const hoverTex=new THREE.CanvasTexture(HCAN);
+const hoverSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:hoverTex,transparent:true,depthTest:false}));
+hoverSprite.scale.set(0.5,0.137,1); hoverSprite.visible=false; scene.add(hoverSprite);
+let hoverIdx=-1;
+function drawHover(text){
+  HCTX.clearRect(0,0,512,140);
+  HCTX.fillStyle='rgba(18,14,9,0.85)'; roundRect(HCTX,8,40,496,64,32); HCTX.fill();
+  HCTX.fillStyle='#f3efe4'; HCTX.font='600 34px Georgia, serif';
+  HCTX.textAlign='center'; HCTX.textBaseline='middle';
+  HCTX.fillText((text||'').slice(0,42),256,73);
+  HCTX.textAlign='start'; HCTX.textBaseline='alphabetic';
+  hoverTex.needsUpdate=true;
+}
+const reticle=new THREE.Mesh(new THREE.RingGeometry(0.009,0.015,28),
+  new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.95,side:THREE.DoubleSide,depthTest:false}));
+reticle.visible=false; scene.add(reticle);
+function updateHover(){
+  let shown=false;
+  for (const ctrl of xrControllers){
+    tmpM.identity().extractRotation(ctrl.matrixWorld);
+    org.setFromMatrixPosition(ctrl.matrixWorld);
+    dir.set(0,0,-1).applyMatrix4(tmpM).normalize();
+    ray.set(org,dir); ray.params.Points.threshold=0.03;
+    const hit = POINTS && ray.intersectObject(POINTS,false)[0];
+    if (hit){
+      reticle.position.copy(hit.point); reticle.lookAt(camWorld); reticle.visible=true;
+      hoverSprite.position.copy(hit.point); hoverSprite.position.y+=0.07;
+      if (hit.index!==hoverIdx){ hoverIdx=hit.index; drawHover((META[hit.index]||{}).title); }
+      hoverSprite.visible=true; shown=true; break;
+    }
+  }
+  if (!shown){ reticle.visible=false; hoverSprite.visible=false; hoverIdx=-1; }
+}
+function readThumbsticks(){
+  const session=renderer.xr.getSession(); if(!session) return;
+  for (const src of session.inputSources){
+    const gp=src.gamepad; if(!gp||!gp.axes) continue;
+    const ax=gp.axes, x=ax[2]||ax[0]||0, y=ax[3]||ax[1]||0;
+    if (src.handedness==='left'){                     // left stick → zoom (scale globe)
+      if (Math.abs(y)>0.15){ globe.scale.multiplyScalar(1 + (-y)*0.012); globe.scale.clampScalar(0.55,2.4); }
+    } else {                                          // right stick → rotate globe
+      if (Math.abs(x)>0.15) globe.rotation.y += x*0.03;
+      if (Math.abs(y)>0.15) globe.rotation.x = Math.max(-1.2, Math.min(1.2, globe.rotation.x + (-y)*0.02));
+    }
+  }
+}
+function placePanel(){                                 // float the panel in front of the viewer
+  const cam = renderer.xr.isPresenting ? renderer.xr.getCamera() : camera;
+  cam.getWorldPosition(camWorld);
+  dir.set(0,0,-1).applyQuaternion(cam.quaternion).normalize();
+  panel.position.copy(camWorld).addScaledVector(dir, 1.3);
+  panel.position.y = camWorld.y - 0.06;
 }
 
 addEventListener('resize', () => {
@@ -308,15 +369,17 @@ function start(){
 }
 
 const camWorld = new THREE.Vector3();
-let t = 0;
+let t = 0, frame = 0;
 renderer.setAnimationLoop(() => {
-  t += 0.005;
-  globe.rotation.y += 0.0009;              // gentle spin
+  t += 0.005; frame++;
+  if (!renderer.xr.isPresenting) globe.rotation.y += 0.0009;   // desktop: gentle auto-spin
   if (marker.visible) marker.scale.setScalar(1 + Math.sin(t*6)*0.25);
-  if (panel.visible){                       // billboard to viewer
-    (renderer.xr.isPresenting ? renderer.xr.getCamera() : camera).getWorldPosition(camWorld);
-    panel.lookAt(camWorld);
+  (renderer.xr.isPresenting ? renderer.xr.getCamera() : camera).getWorldPosition(camWorld);
+  if (renderer.xr.isPresenting){
+    readThumbsticks();
+    if (frame % 3 === 0) updateHover();     // throttle picking for VR framerate
   }
+  if (panel.visible) panel.lookAt(camWorld); // billboard to viewer
   controls.update();
   renderer.render(scene, camera);
 });
