@@ -8,6 +8,7 @@
 <script defer src="cities.js"></script>
 <script defer src="places.js"></script>
 <script defer src="people.js"></script>
+<script defer src="community-ev.js"></script><!-- BYD charging network (VN) as an EV layer -->
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
 <style>
   :root{--bg:#0b0a08;--panel:rgba(247,245,238,.96);--txt:#2b2925;--muted:#75716a;--accent:#cc785c;
@@ -35,7 +36,7 @@
 <div id="loading">Đang dựng vũ trụ tri thức…</div>
 <div id="info">
   <h1><b>WikiGlobe</b> XR</h1>
-  <p>Đeo kính → <b>Enter VR</b> → <b>cần analog</b> xoay/zoom địa cầu · chĩa tia rồi <b>bóp cò</b> (hoặc <b>búng tay</b>) vào chấm để mở · búng chỗ trống để đóng. Trên máy tính → kéo chuột xoay, lăn zoom, bấm vào chấm.</p>
+  <p>Đeo kính → <b>Enter VR</b> → <b>cần analog</b> xoay/zoom địa cầu · chĩa tia rồi <b>bóp cò</b> (hoặc <b>búng tay</b>) vào chấm để mở · búng chỗ trống để đóng · bóp <b>grip</b> đổi lớp <b>Tri thức ⇄ Trạm sạc EV</b>. Trên máy tính → kéo chuột xoay, lăn zoom, bấm vào chấm.</p>
 </div>
 <div id="legend">
   <span><i style="background:#ffd479"></i>Đô thị</span>
@@ -44,6 +45,7 @@
   <span><i style="background:#6fb98f"></i>Thiên nhiên</span>
   <span><i style="background:#5aa9d6"></i>Khoa học</span>
   <span><i style="background:#e98aa6"></i>Nhân vật</span>
+  <span><i style="background:#16c784"></i>Trạm sạc EV (BYD)</span>
 </div>
 
 <script type="importmap">
@@ -160,6 +162,26 @@ function buildPoints(){
   globe.add(points);
   return points;
 }
+function buildEV(){
+  const arr = window.WIKIGLOBE_COMMUNITY || [];
+  if (!arr.length) return null;
+  const pos = new Float32Array(arr.length*3);
+  arr.forEach((c,i) => {
+    const v = latLonToVec3(c.lat, c.lon, R*1.013);     // sit just above the knowledge layer
+    pos[i*3]=v.x; pos[i*3+1]=v.y; pos[i*3+2]=v.z; EV_META.push(c);
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  const m = new THREE.PointsMaterial({ size:0.03, map:discTexture(), color:0x16c784,
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, sizeAttenuation:true });
+  const pts = new THREE.Points(g, m); globe.add(pts); return pts;
+}
+let layerMode = 0;                                     // 0 both · 1 EV only · 2 knowledge only
+function applyLayerMode(){
+  if (POINTS)   POINTS.visible   = layerMode !== 1;
+  if (EVPOINTS) EVPOINTS.visible = layerMode !== 2;
+  dismiss();                                            // close panel/marker on a layer switch
+}
 
 // selection marker (pulses)
 const marker = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 16),
@@ -184,11 +206,11 @@ function wrap(ctx, text, x, y, maxW, lh, maxLines){
   }
   ctx.fillText(line, x, y);
 }
-function drawPanel(title, body, meta){
+function drawPanel(title, body, meta, accent){
   PCTX.clearRect(0,0,640,420);
   PCTX.fillStyle = 'rgba(247,245,238,0.97)';
   roundRect(PCTX, 8, 8, 624, 404, 28); PCTX.fill();
-  PCTX.fillStyle = '#cc785c'; PCTX.font = '600 22px Georgia, serif';
+  PCTX.fillStyle = accent || '#cc785c'; PCTX.font = '600 22px Georgia, serif';
   PCTX.fillText((meta||'WIKIGLOBE').toUpperCase().slice(0,46), 36, 60);
   PCTX.fillStyle = '#2b2925'; PCTX.font = '600 34px Georgia, serif';
   wrap(PCTX, title, 36, 104, 568, 40, 2);
@@ -212,39 +234,48 @@ async function open(meta){
       (j.description || 'Wikipedia') + ' · ' + meta.lang.toUpperCase());
   }catch(e){ if (my===openSeq) drawPanel(meta.title, 'Không tải được nội dung.', meta.lang.toUpperCase()); }
 }
+function openEV(m){
+  panel.visible = true; placePanel(); openSeq++;          // cancel any pending article fetch
+  drawPanel(m.title || 'Trạm sạc EV', (m.operator || m.network || 'BYD') +
+    ' · Mạng sạc xe điện cộng đồng tại Việt Nam.', 'TRẠM SẠC EV', '#0f9d63');
+}
 
-// ---- picking (shared by mouse + controllers) ----
+// ---- picking (shared by mouse + controllers, across both layers) ----
 const ray = new THREE.Raycaster();
 ray.params.Points.threshold = 0.03;
-let POINTS = null;
+let POINTS = null, EVPOINTS = null;
+const EV_META = [];
 const _v = new THREE.Vector3();
-function selectIndex(idx){
-  const m = META[idx]; if (!m) return;
-  _v.fromBufferAttribute(POINTS.geometry.attributes.position, idx);   // globe-local
+const pickables = () => [POINTS, EVPOINTS].filter(o => o && o.visible);   // hidden layer not pickable
+function selectHit(object, index){
+  const ev = object === EVPOINTS;
+  const m = (ev ? EV_META : META)[index]; if (!m) return;
+  _v.fromBufferAttribute(object.geometry.attributes.position, index);   // globe-local
   marker.position.copy(_v); marker.visible = true;
-  open(m);
+  ev ? openEV(m) : open(m);
 }
 function pickFrom(origin, dir){
-  if (!POINTS) return false;
-  ray.set(origin, dir);
-  const hit = ray.intersectObject(POINTS, false)[0];
-  if (hit){ selectIndex(hit.index); return true; }
+  const objs = pickables(); if (!objs.length) return false;
+  ray.set(origin, dir); ray.params.Points.threshold = 0.03;
+  const hit = ray.intersectObjects(objs, false)[0];
+  if (hit){ selectHit(hit.object, hit.index); return true; }
   return false;
 }
 function dismiss(){ panel.visible = false; marker.visible = false; }
-// nearest point to a WORLD position (for fingertip "búng" selection)
+// nearest point (any layer) to a WORLD position — for fingertip "búng" selection
 const _wp = new THREE.Vector3();
 function nearestPoint(world){
-  if (!POINTS) return null;
-  const a = POINTS.geometry.attributes.position.array;
   globe.updateWorldMatrix(true, false);
-  let best = -1, bd = Infinity;
-  for (let i = 0; i < a.length; i += 3){
-    _wp.set(a[i], a[i+1], a[i+2]).applyMatrix4(globe.matrixWorld);
-    const d = _wp.distanceToSquared(world);
-    if (d < bd){ bd = d; best = i/3; }
+  let best = null, bd = Infinity;
+  for (const obj of pickables()){
+    const a = obj.geometry.attributes.position.array;
+    for (let i = 0; i < a.length; i += 3){
+      _wp.set(a[i], a[i+1], a[i+2]).applyMatrix4(globe.matrixWorld);
+      const d = _wp.distanceToSquared(world);
+      if (d < bd){ bd = d; best = { object: obj, index: i/3 }; }
+    }
   }
-  return { index: best, dist: Math.sqrt(bd) };
+  return best ? { object: best.object, index: best.index, dist: Math.sqrt(bd) } : null;
 }
 
 // desktop click
@@ -253,9 +284,8 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
   const ndc = new THREE.Vector2((e.clientX/innerWidth)*2-1, -(e.clientY/innerHeight)*2+1);
   ray.params.Points.threshold = 0.03;
   ray.setFromCamera(ndc, camera);
-  const hit = POINTS && ray.intersectObject(POINTS, false)[0];
-  if (hit){ const v = new THREE.Vector3().fromBufferAttribute(POINTS.geometry.attributes.position, hit.index);
-    marker.position.copy(v); marker.visible = true; open(META[hit.index]); }
+  const hit = ray.intersectObjects(pickables(), false)[0];
+  if (hit) selectHit(hit.object, hit.index);
 });
 
 // VR controllers + hand tracking
@@ -279,7 +309,7 @@ for (const i of [0,1]){
       tip.getWorldPosition(org);
       if (org.distanceTo(CENTER) < 1.3){            // a real hand reaching the globe
         const near = nearestPoint(org);
-        if (near && near.dist < 0.12){ selectIndex(near.index); return; }
+        if (near && near.dist < 0.12){ selectHit(near.object, near.index); return; }
       }
     }
     // otherwise point-and-pinch / controller ray
@@ -288,6 +318,7 @@ for (const i of [0,1]){
     dir.set(0,0,-1).applyMatrix4(tmpM).normalize();
     if (!pickFrom(org, dir)) dismiss();              // pinch/trigger on empty → dismiss
   });
+  ctrl.addEventListener('squeezestart', () => { layerMode = (layerMode+1) % 3; applyLayerMode(); });
   scene.add(ctrl);
 
   const hand = renderer.xr.getHand(i);
@@ -322,11 +353,14 @@ function updateHover(){
     org.setFromMatrixPosition(ctrl.matrixWorld);
     dir.set(0,0,-1).applyMatrix4(tmpM).normalize();
     ray.set(org,dir); ray.params.Points.threshold=0.03;
-    const hit = POINTS && ray.intersectObject(POINTS,false)[0];
+    const hit = ray.intersectObjects(pickables(),false)[0];
     if (hit){
+      const ev = hit.object===EVPOINTS;
       reticle.position.copy(hit.point); reticle.lookAt(camWorld); reticle.visible=true;
+      reticle.material.color.setHex(ev?0x16c784:0xffffff);
       hoverSprite.position.copy(hit.point); hoverSprite.position.y+=0.07;
-      if (hit.index!==hoverIdx){ hoverIdx=hit.index; drawHover((META[hit.index]||{}).title); }
+      const key=(ev?'e':'k')+hit.index;
+      if (key!==hoverIdx){ hoverIdx=key; drawHover(((ev?EV_META:META)[hit.index]||{}).title); }
       hoverSprite.visible=true; shown=true; break;
     }
   }
@@ -362,6 +396,7 @@ let started = false;
 function start(){
   if (started) return; started = true;
   POINTS = buildPoints();
+  EVPOINTS = buildEV();                                 // BYD charging layer (green)
   document.getElementById('loading').classList.add('gone');
   window.__xr = { meta: META.length,
     pick: (lon,lat) => { const v = latLonToVec3(lat,lon,R*1.008).applyMatrix4(globe.matrixWorld);
